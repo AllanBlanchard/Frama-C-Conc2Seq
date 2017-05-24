@@ -18,9 +18,19 @@ class visitor = object(this)
   method private pr_vlval lv = Visitor.visitFramacLval (this :> base_type) lv
   method private pr_voff  o  = Visitor.visitFramacOffset (this :> base_type) o
 
+  val mutable insert_ph = false
+                                                         
   method! vfunc _ =
     Cil.DoChildrenPost (fun f -> Cfg.clearCFGinfo f ; Cfg.cfgFun f ; f)
-                                                         
+
+  method! vstmt_aux _ =
+    if insert_ph then begin
+        insert_ph <- false ;
+        this#queueInstr [Cil.dummyInstr] ;
+        Options.Self.feedback "Inserting a dummy instruction"
+      end ;
+    Cil.DoChildren
+                          
   method! vinst inst =
     let replace_set_lvalue lv =
       match lv with
@@ -31,15 +41,23 @@ class visitor = object(this)
     in
     match inst with
     | Set(lv, exp, loc) ->
-      let nlv = replace_set_lvalue lv in
-      let nxp = this#pr_vexp exp in
-      Cil.ChangeTo ([Set(nlv, nxp, loc)])
+       let nlv = replace_set_lvalue lv in
+       let nxp = this#pr_vexp exp in
+       Cil.ChangeTo ([Set(nlv, nxp, loc)])
+    | Local_init(vi, ConsInit(fct, exp_list, t), loc) ->
+       let nexp_list = List.map this#pr_vexp exp_list in
+       insert_ph <- true ;
+       Cil.ChangeTo([Local_init(vi, ConsInit(fct, nexp_list, t), loc)])
     | Call(Some(lv), fct, exp_list, loc) ->
-      let nlv = replace_set_lvalue lv in
-      let nexp_list = List.map this#pr_vexp exp_list in
-      Cil.ChangeTo ([Call(Some(nlv), fct, nexp_list, loc)])
-    | _ -> 
-      Cil.DoChildren
+       let nlv = replace_set_lvalue lv in
+       let nexp_list = List.map this#pr_vexp exp_list in
+       insert_ph <- true ;
+       Cil.ChangeTo ([Call(Some(nlv), fct, nexp_list, loc)])
+    | Call(None, fct, exp_list, loc) ->
+       let nexp_list = List.map this#pr_vexp exp_list in
+       Cil.ChangeTo ([Call(None, fct, nexp_list, loc)])
+    | _ ->
+       Cil.DoChildren
       
 
   method! vexpr exp =
