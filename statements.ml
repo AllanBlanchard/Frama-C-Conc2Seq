@@ -12,9 +12,9 @@ let base_simulation name =
   Cil.setFormals def [th] ;
   (def, th)
 
-let finalize def body locals loc =
+let finalize def body loc =
   def.sbody   <- { body with blocals = body.blocals @ def.sbody.blocals };
-  def.slocals <- def.sbody.blocals @ locals ;
+  def.slocals <- def.sbody.blocals ;
   let new_kf = { fundec = Definition(def, loc); spec = def.sspec } in
   Globals.Functions.replace_by_definition new_kf.spec def loc ;
   def.svar.vdefined <- true ;
@@ -22,27 +22,26 @@ let finalize def body locals loc =
   Cfg.cfgFun def
 
 let affect_pc_th th exp loc = 
-  let access = Vars.access (-1) ~th:(Some th) loc in
+  let access = Vars.c_access (-1) ~th:(Some th) loc in
   Cil.mkStmt(Instr(Set(access, (Cil.new_exp loc exp), loc)))
             
 let affect_pc_th_int th value loc =
   let const  = Const(CInt64(Integer.of_int value, IInt, None)) in
-  let access = Vars.access (-1) ~th:(Some th) loc in
+  let access = Vars.c_access (-1) ~th:(Some th) loc in
   Cil.mkStmt(Instr(Set(access, (Cil.new_exp loc const), loc)))
 
 let affect_from fct th value loc =
   let const  = Const(CInt64(Integer.of_int value, IInt, None)) in
-  let access = Vars.access fct.vid ~th:(Some th) loc in
+  let access = Vars.c_access fct.vid ~th:(Some th) loc in
   Cil.mkStmt(Instr(Set(access, (Cil.new_exp loc const), loc)))
 
 let rec skip_skip stmt =
   match stmt.skind with
-  | Continue(_) | Break(_) | Instr(Skip(_))
-(*| Block(_) when not (Concurrency.is_atomic_stmt stmt)*)
+  | Continue(_) | Break(_) | Instr(Skip(_)) | Instr(Asm(_))
+  | Block(_) when not (Atomic_spec.atomic_stmt stmt)
     -> skip_skip (List.hd stmt.succs)
   | Goto(r_next, _) -> skip_skip !r_next
   | _ -> stmt
-
             
 let set transformer affect s =
   let next = (skip_skip (List.hd s.succs)).sid in
@@ -54,12 +53,12 @@ let set transformer affect s =
     | _ -> assert false
   in
   let nstmt = Visitor.visitFramacStmt transformer s in
-  Cil.mkStmt (Block(Cil.mkBlock [ nstmt ; ret] )), []
+  [ nstmt ; ret ]
 
 let call transformer affect fct le next th loc =
   let load v e =
     let ne = Visitor.visitFramacExpr transformer e in
-    let nv = Vars.access v.vid ~th:(Some th) loc in
+    let nv = Vars.c_access v.vid ~th:(Some th) loc in
     Cil.mkStmt(Instr(Set(nv, ne, loc)))
   in
   let loads = List.map2 load (Functions.formals fct.vid) le in
@@ -67,7 +66,7 @@ let call transformer affect fct le next th loc =
   let from_stmt = affect_from fct th next loc in
   let fst_kf  = Functions.first_stmt fct.vid in
   let pc_stmt = affect fst_kf.sid in
-  Cil.mkStmt (Block(Cil.mkBlock (loads @ [from_stmt ; pc_stmt]) )), []
+  loads @ [from_stmt ; pc_stmt ]
 
 let call_ret transformer affect s th =
   let dummy = List.hd s.succs in
@@ -83,7 +82,7 @@ let call_ret transformer affect s th =
     | _ -> assert false
   in
   dummy, call transformer affect fct l next_call th loc
-                                                                                    
+
 let call_void transformer affect s th =
   let next_call = (skip_skip (List.hd s.succs)).sid in
   let fct, l, loc = match s.skind with
@@ -101,8 +100,8 @@ let return kf stmt th =
   (* does not depend on the global state, so it is OK there.                *) 
   let fv = Globals.Functions.get_vi kf in
   let loc  = Cil_datatype.Stmt.loc stmt in
-  let from = Lval(Vars.access fv.vid ~th:(Some th) loc) in
-  (affect_pc_th th from loc), []
+  let from = Lval(Vars.c_access fv.vid ~th:(Some th) loc) in
+  [affect_pc_th th from loc]
 
 let cond transformer affect s loc =
   match s.skind with
@@ -111,7 +110,7 @@ let cond transformer affect s loc =
     let (s0, s1) = Cil.separate_if_succs s in
     let n0 = (skip_skip s0).sid and n1 = (skip_skip s1).sid in
     let r0 = affect n0          and r1 = affect n1 in
-    Cil.mkStmt (If(ne, (Cil.mkBlock [r0]), (Cil.mkBlock [r1]), loc)), []
+    [Cil.mkStmt (If(ne, (Cil.mkBlock [r0]), (Cil.mkBlock [r1]), loc))]
   | _ -> assert false
 
 let switch transformer affect s loc =
@@ -124,12 +123,33 @@ let switch transformer affect s loc =
       { (affect next) with labels = c.labels }
     in
     let nlc = List.map to_sim (List.rev lc) in
-    Cil.mkStmt (Switch(ne, (Cil.mkBlock nlc), nlc, loc)), []
+    [Cil.mkStmt (Switch(ne, (Cil.mkBlock nlc), nlc, loc))]
   | _ -> assert false
-                
-let at_block _ _ _ = 
-  Cil.mkStmt (Block(Cil.mkBlock [] )), []
 
+let after_block_aux s =
+  match s.skind with
+  | Block(b) ->
+     let rec close s1 s2 =
+       match List.mem b (Kernel_function.blocks_closed_by_edge s1 s2) with
+       | true -> s2
+       | _ -> close s2 (List.hd s2.succs)
+     in close s (List.hd s.succs)
+  | _ -> assert false
+
+let after_block s =
+  let prj = Old_project.get() in
+  Project.on prj after_block_aux s
+                
+let at_block transformer affect s =
+  assert (Atomic_spec.atomic_stmt s) ;
+  match s.skind with
+  | Block(b) ->
+     let fs = skip_skip (after_block s) in
+     let block = Visitor.visitFramacBlock transformer b in
+     let ret = affect (skip_skip fs).sid in
+     let b = { block with bstmts = (block.bstmts @ [ret]) } in
+     [Cil.mkStmt (Block b)]
+  | _ -> assert false
 
 let return_loading kf stmt dum =
   let ret, fct, loc = match stmt.skind with
@@ -155,7 +175,7 @@ let return_loading kf stmt dum =
   let affect = affect_pc_th_int th (skip_skip (List.hd dum.succs)).sid loc in
   let ret_stmt = Cil.mkStmt (Return (None, loc)) in
   let block = Cil.mkBlock [create_return ; affect ; ret_stmt] in
-  finalize def block [] loc ;
+  finalize def block loc ;
   statements := Smap.add dum.sid def !statements ;
   ()
     
@@ -168,7 +188,7 @@ let add_stmt kf stmt =
   let affect value = affect_pc_th_int th value loc in
   let transformer = Code_transformer.visitor th loc in 
 
-  let body, locals = match stmt.skind with
+  let body = match stmt.skind with
     | Instr(Set(_)) | Instr(Local_init(_,AssignInit(_),_)) ->
        set transformer affect stmt
     | Instr(Call(Some(_),_,_,_)) | Instr(Local_init(_,ConsInit(_),_)) ->
@@ -186,19 +206,23 @@ let add_stmt kf stmt =
     | Block(_)  ->
        at_block transformer affect stmt
     | Loop(_,b,_,_,_) when b.bstmts = [] -> 
-       (affect stmt.sid), []
+       [affect stmt.sid]
     | Loop(_,b,_,_,_) -> 
-       let next = (skip_skip (List.hd b.bstmts)).sid in
-       (affect next), []
+       [affect (skip_skip (List.hd b.bstmts)).sid]
     | _ -> assert false
   in
-                                  
   let ret_stmt = Cil.mkStmt (Return (None, loc)) in
+  let block = Cil.mkBlock (body @ [ret_stmt]) in
+  finalize def block loc ;
+  statements := Smap.add stmt.sid def !statements
 
-  let block = Cil.mkBlock [body ; ret_stmt] in
-  finalize def block locals loc ;
-  statements := Smap.add stmt.sid def !statements ;
-  ()
-                                
-let simulations loc =
+let simulation sid =
+  match Smap.mem sid !statements with
+  | true -> Smap.find sid !statements
+  | false -> assert false
+
+let simulations () =
+  Smap.fold (fun k _ l -> k :: l) !statements []
+  
+let globals loc =
   List.map (fun (_, f) -> GFun(f, loc)) (Smap.bindings !statements)

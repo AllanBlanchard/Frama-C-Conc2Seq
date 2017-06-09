@@ -3,15 +3,25 @@ open Cil_types
 class empty_project prj = object(_)
   inherit Visitor.frama_c_copy prj
 
-  method! vglob_aux _ =
-    let modify _ = [] in
-    Cil.DoChildrenPost modify
+  method! vglob_aux g =
+    let open Globals.Functions in
+    match g with
+    | GVar(_) | GVarDecl(_) ->
+       let modify _ = [] in Cil.DoChildrenPost modify
+    | GFun(f, _) when not (Atomic_spec.atomic_fct (get f.svar)) ->
+       let modify _ = [] in Cil.DoChildrenPost modify
+    | GFunDecl(_, vi, _) when not (Atomic_spec.atomic_fct (get vi)) ->
+       let modify _ = [] in Cil.DoChildrenPost modify
+    | GAnnot(Dinvariant(_),_) ->
+       let modify _ = [] in Cil.DoChildrenPost modify
+    | _ ->
+       Cil.JustCopy
 end
 
 let collect_globals () =
   let collect vi ii l = (vi,ii) :: l in
   Globals.Vars.fold collect []
-
+ 
 let collect_locals () =
   let collect kf l =
     match kf.fundec with
@@ -25,8 +35,12 @@ let collect_locals () =
 let collect_functions () =
   let collect kf l =
     match kf.fundec with
-    | Declaration(_) -> l
-    | Definition(_, _) -> kf :: l
+    | Declaration(_) ->
+       l
+    | Definition(_, _) when Atomic_spec.atomic_fct kf ->
+       l
+    | _ ->
+       kf :: l
   in
   Globals.Functions.fold collect []
 
@@ -39,11 +53,10 @@ class stmt_collector = object(this)
     let kf = match this#current_kf with None -> assert false | Some kf -> kf in
     match stmt.skind with
     | Goto(_) | Continue(_) | Break(_) | Instr(Skip(_)) 
-    | Instr(Asm(_)) ->
-(*  | Block(_) when not (Concurrency.is_atomic_stmt stmt) *) 
+    | Instr(Asm(_)) | Block(_) when not (Atomic_spec.atomic_stmt stmt) ->
       Cil.DoChildren
-(*  | Block(_) when Concurrency.is_atomic_stmt stmt ->
-      stmt_list <- stmt :: stmt_list ; Cil.SkipChildren *)
+    | Block(_) when Atomic_spec.atomic_stmt stmt ->
+      stmt_list <- (kf, stmt) :: stmt_list ; Cil.SkipChildren
     | _ ->
       stmt_list <- (kf, stmt) :: stmt_list ; Cil.DoChildren
 
@@ -57,8 +70,9 @@ let collect_stmts () =
   let collect kf =
     match kf.fundec with
     | Declaration(_) -> ()
-    | Definition(fundec, _) ->
+    | Definition(fundec, _) when not (Atomic_spec.atomic_fct kf) ->
        let _ = visitFramacFunction (collector :> frama_c_inplace) fundec in ()
+    | _ -> ()
   in
   Globals.Functions.iter collect ;
   collector#get_list()
@@ -67,7 +81,7 @@ class visitor old_prj = object(_)
   inherit Visitor.frama_c_inplace
 
   method! vfile _ =
-    Code_transformer.old_project_is old_prj ;
+    Old_project.initialize old_prj ;
     Vars.initialize_pc () ;
     let globals = Project.on old_prj collect_globals () in
     List.iter (fun (v,ii) -> Vars.add_global v ii) globals ;
@@ -75,16 +89,43 @@ class visitor old_prj = object(_)
     List.iter (fun (f,v ) -> Vars.add_local f v) locals ;
     let functions = Project.on old_prj collect_functions () in
     List.iter (fun f -> Vars.add_function f) functions ;
-    List.iter (fun f -> Functions.add old_prj f) functions ;
+    List.iter (fun f -> Functions.add f) functions ;
     let statements = Project.on old_prj collect_stmts () in
     List.iter (fun (kf, s) -> Statements.add_stmt kf s) statements ;
     
     let loc = Cil.CurrentLoc.get() in
     let vglobals = Vars.simulations loc in
-    let fglobals = Statements.simulations loc in
-
-    let modify f = f.globals <- vglobals @ fglobals ; f in
+    let fglobals = Statements.globals loc in
+    let ilv = Interleavings.get_function loc in
+    let choose = Interleavings.get_choose loc in
+    
+    let modify f =
+      f.globals <- vglobals @ f.globals @ fglobals @ [choose ; ilv] ; f in
     Cil.DoChildrenPost modify
+
+  (* should be done somewhere else *)
+  method! vlval _ =
+    let loc = Cil.CurrentLoc.get() in
+    let modify (host, offset) =
+      match host with
+      | Var(vi) when vi.vglob -> Vars.c_access vi.vid ~th:None ~no:offset loc
+      | _ -> host, offset
+    in
+    Cil.DoChildrenPost modify
+
+  method! vterm_lval _ =
+    let loc = Cil.CurrentLoc.get() in
+    let modify (host, offset) =
+      match host with
+      | TVar(lv) ->
+         begin match lv.lv_origin with
+         | None -> host, offset
+         | Some(vi) -> Vars.l_access vi.vid ~th:None ~no:offset loc
+         end
+      | _ -> host, offset
+    in
+    Cil.DoChildrenPost modify
+
 end
 
 let create_from old_prj = 

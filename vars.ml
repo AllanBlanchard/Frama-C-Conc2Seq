@@ -51,18 +51,30 @@ let simulations loc =
   let all = p :: g @ t @ l @ f in
   List.map (fun v -> GVar(v, {init=None}, loc)) all
 
+let ptr_of_local vid =
+  if      vid = -1               then get_pc ()
+  else if Vmap.mem vid !locals   then Vmap.find vid !locals
+  else if Vmap.mem vid !thlocals then Vmap.find vid !thlocals
+  else if Vmap.mem vid !fromvars then Vmap.find vid !fromvars
+  else assert false
 
-let access vid ?th:(th=None) ?no:(no=NoOffset) loc =
+let c_access vid ?th:(th=None) ?no:(no=NoOffset) loc =
   match th with
   | None ->
      assert(Vmap.mem vid !globals) ;
      Var( fst (Vmap.find vid !globals) ), no
   | Some th ->
-     let ptr = if      vid = -1               then get_pc ()
-               else if Vmap.mem vid !locals   then Vmap.find vid !locals
-               else if Vmap.mem vid !thlocals then Vmap.find vid !thlocals
-               else if Vmap.mem vid !fromvars then Vmap.find vid !fromvars
-               else assert false
-     in
-     let exp = Cil.mkBinOp ~loc:loc PlusPI (Cil.evar ptr) (Cil.evar th) in
+     let ptr = ptr_of_local vid in
+     let exp = Cil.mkBinOp ~loc PlusPI (Cil.evar ptr) (Cil.evar th) in
      Cil.mkMem ~addr:exp ~off:no
+
+
+let l_access vid ?th:(th=None) ?no:(no=TNoOffset) loc =
+  match th with
+  | None ->
+     assert(Vmap.mem vid !globals) ;
+     TVar(Cil.cvar_to_lvar (fst (Vmap.find vid !globals))), no
+  | Some th ->
+     let ptr = ptr_of_local vid in
+     let exp = Cil.mkBinOp ~loc PlusPI (Cil.evar ptr) (Cil.evar th) in
+     Cil.mkTermMem ~addr:(Logic_utils.expr_to_term true exp) ~off:no

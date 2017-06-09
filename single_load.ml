@@ -19,10 +19,11 @@ class visitor = object(this)
   method private pr_voff  o  = Visitor.visitFramacOffset (this :> base_type) o
 
   val mutable insert_ph = false
-                                                         
-  method! vfunc _ =
-    Cil.DoChildrenPost (fun f -> Cfg.clearCFGinfo f ; Cfg.cfgFun f ; f)
 
+  method! vfunc _ =
+    Cil.DoChildrenPost
+      (fun f -> Cfg.clearCFGinfo ~clear_id:false f ; Cfg.cfgFun f ; f)
+      
   method! vstmt_aux _ =
     if insert_ph then begin
         insert_ph <- false ;
@@ -37,7 +38,7 @@ class visitor = object(this)
       | Var(vi), offset when vi.vglob || vi.vformal ->
          Var(vi), this#pr_voff offset
       | Var(_), _ -> lv 
-      | _         -> this#pr_vlval lv
+      | Mem(e), o -> Mem(this#pr_vexp e), this#pr_voff o
     in
     match inst with
     | Set(lv, exp, loc) ->
@@ -46,12 +47,12 @@ class visitor = object(this)
        Cil.ChangeTo ([Set(nlv, nxp, loc)])
     | Local_init(vi, ConsInit(fct, exp_list, t), loc) ->
        let nexp_list = List.map this#pr_vexp exp_list in
-       insert_ph <- true ;
+       insert_ph <- not (Atomic_spec.atomic_call inst) ;
        Cil.ChangeTo([Local_init(vi, ConsInit(fct, nexp_list, t), loc)])
     | Call(Some(lv), fct, exp_list, loc) ->
        let nlv = replace_set_lvalue lv in
        let nexp_list = List.map this#pr_vexp exp_list in
-       insert_ph <- true ;
+       insert_ph <- not (Atomic_spec.atomic_call inst) ;
        Cil.ChangeTo ([Call(Some(nlv), fct, nexp_list, loc)])
     | Call(None, fct, exp_list, loc) ->
        let nexp_list = List.map this#pr_vexp exp_list in
@@ -81,7 +82,6 @@ class visitor = object(this)
       let aux_lv = Cil.var aux_vi in
       let aux_set = Set(aux_lv, (Cil.new_exp ~loc:loc (Lval lv)), loc) in
       this#queueInstr [aux_set] ;
-      (* File.must_recompute_cfg f ; *)
       aux_lv
     in
     let name = try
@@ -107,12 +107,11 @@ class visitor = object(this)
     in Cil.DoChildrenPost modify
 end
 
+let do_visit ast =
+  Visitor.visitFramacFile (new visitor) ast
+                  
 let make name =
   let prj = File.create_project_from_visitor name (new Visitor.frama_c_copy) in
   let ast = Project.on prj Ast.get() in
-  Project.on prj Visitor.visitFramacFile (new visitor) ast ;
-  (*
-  Project.on prj Ast.mark_as_changed () ;
-  Project.on prj Ast.compute () ;
-   *)
+  Project.on prj do_visit ast ;
   prj
