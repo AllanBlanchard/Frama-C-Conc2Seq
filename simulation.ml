@@ -96,11 +96,19 @@ class visitor old_prj = object(_)
     let loc = Cil.CurrentLoc.get() in
     let vglobals = Vars.simulations loc in
     let fglobals = Statements.globals loc in
+    let iglobals = Functions.init_simulations loc in
     let ilv = Interleavings.get_function loc in
     let choose = Interleavings.get_choose loc in
     
     let modify f =
-      f.globals <- vglobals @ f.globals @ fglobals @ [choose ; ilv] ; f in
+      f.globals <-
+        vglobals
+        @ f.globals
+        @ iglobals
+        @ fglobals
+        @ [choose ; ilv] ;
+      f
+    in
     Cil.DoChildrenPost modify
 
   (* should be done somewhere else *)

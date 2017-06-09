@@ -24,15 +24,22 @@ let case_choose vi th loc = case_identified 0 vi th loc
 let case_stmt sid th loc =
   case_identified sid (Statements.simulation sid).svar th loc
 
+let case_init sid th loc =
+  case_identified (-sid) (Functions.simulation sid) th loc
+                  
+let all_case_init th loc =
+  List.flatten
+    (List.map (fun s -> case_init s th loc) ( Functions.ids() ))
+  
 let all_case_stmt th loc =
   List.flatten
     (List.map (fun s -> case_stmt s th loc) (Statements.simulations ()))
 
 let switch_stmt choose th loc = 
   let ch_call = case_choose choose th loc in
-  (*  let f_calls = map (fun f -> case_call f th loc) funcs in *)
+  let f_calls = all_case_init th loc in
   let s_calls = all_case_stmt th loc in
-  let switch_b = Cil.mkBlock (ch_call @ (* f_calls @*) s_calls) in
+  let switch_b = Cil.mkBlock (ch_call @ f_calls @ s_calls) in
   let access = Vars.c_access (-1) ~th:(Some th) loc in
   let pct_th = Cil.new_exp ~loc:loc (Lval (access)) in
   Cil.mkStmt( Switch(pct_th, switch_b, switch_b.bstmts, loc))
