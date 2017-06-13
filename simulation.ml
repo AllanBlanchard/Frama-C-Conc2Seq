@@ -111,6 +111,19 @@ class visitor old_prj = object(_)
     in
     Cil.DoChildrenPost modify
 
+  val mutable in_atomic_func = false
+  method! vglob_aux g =
+    let open Globals.Functions in
+    begin match g with
+    | GFun(f, _) when Atomic_spec.atomic_fct (get f.svar) ->
+       in_atomic_func <- true
+    | GFunDecl(_, vi, _) when Atomic_spec.atomic_fct (get vi) ->
+       in_atomic_func <- true
+    | _ -> ()
+    end ;
+    let modify v = in_atomic_func <- false ; v in
+    Cil.DoChildrenPost modify
+                       
   (* should be done somewhere else *)
   method! vlval _ =
     let loc = Cil.CurrentLoc.get() in
@@ -128,12 +141,14 @@ class visitor old_prj = object(_)
       | TVar(lv) ->
          begin match lv.lv_origin with
          | None -> host, offset
-         | Some(vi) -> Vars.l_access vi.vid ~th:None ~no:offset loc
+         | Some vi when in_atomic_func && not vi.vglob ->
+            host, offset
+         | Some vi ->
+            Vars.l_access vi.vid ~th:None ~no:offset loc
          end
       | _ -> host, offset
     in
     Cil.DoChildrenPost modify
-
 end
 
 let create_from old_prj = 

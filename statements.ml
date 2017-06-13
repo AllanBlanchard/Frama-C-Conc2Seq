@@ -83,6 +83,11 @@ let call_ret transformer affect s th =
   in
   dummy, call transformer affect fct l next_call th loc
 
+let atomic_call_ret transformer affect s =
+  let stmt = Visitor.visitFramacStmt transformer s in
+  let ret = affect (skip_skip (List.hd s.succs)).sid in
+  [ stmt ; ret ]
+              
 let call_void transformer affect s th =
   let next_call = (skip_skip (List.hd s.succs)).sid in
   let fct, l, loc = match s.skind with
@@ -191,10 +196,13 @@ let add_stmt kf stmt =
   let body = match stmt.skind with
     | Instr(Set(_)) | Instr(Local_init(_,AssignInit(_),_)) ->
        set transformer affect stmt
-    | Instr(Call(Some(_),_,_,_)) | Instr(Local_init(_,ConsInit(_),_)) ->
+    | Instr(Call(Some(_),_,_,_)) | Instr(Local_init(_,ConsInit(_),_))
+         when not(Atomic_spec.atomic_call_stmt stmt) ->
        let dum, result = call_ret transformer affect stmt th in
        return_loading kf stmt dum ;
        result
+    | Instr(Call(Some(_),_,_,_)) | Instr(Local_init(_,ConsInit(_),_)) ->
+       atomic_call_ret transformer affect stmt
     | Instr(Call(None,_,_,_)) ->
        call_void transformer affect stmt th
     | Return(_) ->
