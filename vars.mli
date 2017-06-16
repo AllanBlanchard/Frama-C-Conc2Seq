@@ -2,6 +2,7 @@ open Cil_types
 
 val initialize_pc : unit -> unit
 val add_global : varinfo -> initinfo -> unit
+val add_thread_local : varinfo -> initinfo -> unit
 val add_local : kernel_function -> varinfo -> unit
 val add_function : kernel_function -> unit
 

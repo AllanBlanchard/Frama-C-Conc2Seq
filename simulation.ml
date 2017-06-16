@@ -6,7 +6,7 @@ class empty_project prj = object(_)
   method! vglob_aux g =
     let open Globals.Functions in
     match g with
-    | GVar(_) | GVarDecl(_) ->
+    | GVar(vi, _, _) | GVarDecl(vi, _) when Thread_local.is_thread_local vi ->
        let modify _ = [] in Cil.DoChildrenPost modify
     | GFun(f, _) when not (Atomic_spec.atomic_fct (get f.svar)) ->
        let modify _ = [] in Cil.DoChildrenPost modify
@@ -18,8 +18,14 @@ class empty_project prj = object(_)
        Cil.JustCopy
 end
 
+let is_tl vi = Thread_local.is_thread_local vi
+
+let collect_thread_locals () =
+  let collect vi ii l = if is_tl vi then (vi,ii) :: l else l in
+  Globals.Vars.fold collect []
+
 let collect_globals () =
-  let collect vi ii l = (vi,ii) :: l in
+  let collect vi ii l = if not (is_tl vi) then (vi,ii) :: l else l in
   Globals.Vars.fold collect []
  
 let collect_locals () =
@@ -35,12 +41,9 @@ let collect_locals () =
 let collect_functions () =
   let collect kf l =
     match kf.fundec with
-    | Declaration(_) ->
-       l
-    | Definition(_, _) when Atomic_spec.atomic_fct kf ->
-       l
-    | _ ->
-       kf :: l
+    | Declaration(_) -> l
+    | Definition(_, _) when Atomic_spec.atomic_fct kf -> l
+    | _ -> kf :: l
   in
   Globals.Functions.fold collect []
 
@@ -81,9 +84,11 @@ class visitor old_prj = object(_)
   inherit Visitor.frama_c_inplace
 
   method! vfile _ =
-    Old_project.initialize old_prj ;
+    Options.Self.feedback "Called" ;
     Vars.initialize_pc () ;
-    let globals = Project.on old_prj collect_globals () in
+    let th_locals = Project.on old_prj collect_thread_locals () in
+    List.iter (fun (v,ii) -> Vars.add_thread_local v ii) th_locals ;
+    let globals   = collect_globals () in
     List.iter (fun (v,ii) -> Vars.add_global v ii) globals ;
     let locals = Project.on old_prj collect_locals () in
     List.iter (fun (f,v ) -> Vars.add_local f v) locals ;
@@ -129,8 +134,10 @@ class visitor old_prj = object(_)
     let loc = Cil.CurrentLoc.get() in
     let modify (host, offset) =
       match host with
-      | Var(vi) when vi.vglob -> Vars.c_access vi.vid ~th:None ~no:offset loc
-      | _ -> host, offset
+      | Var(vi) when vi.vglob ->
+         Vars.c_access vi.vid ~th:None ~no:offset loc
+      | _ ->
+         host, offset
     in
     Cil.DoChildrenPost modify
 
@@ -159,7 +166,6 @@ let make _ (*old_ast*) =
   let old_prj = Project.current () in
   let prj = File.create_project_from_visitor "Simulation" (new empty_project) in
   let _ = Project.on prj create_from old_prj in
-  
   Project.on prj Ast.mark_as_changed () ;
   Project.on prj Ast.compute () ;
   prj

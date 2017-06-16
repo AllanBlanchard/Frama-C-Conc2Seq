@@ -112,6 +112,7 @@ let do_visit ast =
                   
 let make name =
   let prj = File.create_project_from_visitor name (new Visitor.frama_c_copy) in
+  Old_project.initialize prj ;
   let ast = Project.on prj Ast.get() in
   Project.on prj do_visit ast ;
   prj

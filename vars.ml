@@ -19,13 +19,14 @@ let initialize_pc () =
   Globals.Vars.add_decl rpc ;
   pc := Some rpc
                    
+let add_thread_local var _ =
+  assert(var.vglob && Thread_local.is_thread_local var) ;
+  let simulation = create_simulation "tl" var in    
+  thlocals := Vmap.add var.vid simulation !thlocals
+
 let add_global var init =
-  assert(var.vglob) ;
-  if Thread_local.is_thread_local var then
-    let simulation = create_simulation "tl" var in    
-    thlocals := Vmap.add var.vid simulation !thlocals
-  else 
-    globals := Vmap.add var.vid (var, init) !globals
+  assert(var.vglob && not (Thread_local.is_thread_local var)) ;
+  globals := Vmap.add var.vid (var, init) !globals
 
 let add_local func var =
   assert (not var.vglob) ;
@@ -35,7 +36,7 @@ let add_local func var =
 
 let add_function func =
   let vi = Globals.Functions.get_vi func in
-  let name = "from_" ^ vi.vname in
+  let name = "next_in_" ^ vi.vname in
   let simulation = Cil.makeGlobalVar name (TPtr (Cil.intType, [])) in
   Globals.Vars.add_decl simulation ;
   fromvars := Vmap.add vi.vid simulation !fromvars
@@ -44,11 +45,10 @@ let get_pc () = match !pc with None -> assert false | Some v -> v
                       
 let simulations loc =
   let p = get_pc() in
-  let g = Vmap.fold (fun _ (v, _) l -> v :: l) !globals [] in
   let t = Vmap.fold (fun _ v l      -> v :: l) !thlocals [] in
   let l = Vmap.fold (fun _ v l      -> v :: l) !locals [] in
   let f = Vmap.fold (fun _ v l      -> v :: l) !fromvars [] in
-  let all = p :: g @ t @ l @ f in
+  let all = p :: t @ l @ f in
   List.map (fun v -> GVar(v, {init=None}, loc)) all
 
 let ptr_of_local vid =
@@ -56,7 +56,7 @@ let ptr_of_local vid =
   else if Vmap.mem vid !locals   then Vmap.find vid !locals
   else if Vmap.mem vid !thlocals then Vmap.find vid !thlocals
   else if Vmap.mem vid !fromvars then Vmap.find vid !fromvars
-  else assert false
+  else (Options.Self.feedback "Accessing %d" vid ; assert false)
 
 let c_access vid ?th:(th=None) ?no:(no=NoOffset) loc =
   match th with

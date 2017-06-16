@@ -83,7 +83,14 @@ let call_ret transformer affect s th =
   in
   dummy, call transformer affect fct l next_call th loc
 
-let atomic_call_ret transformer affect s =
+let atomic_call transformer affect s =
+  let s = match s.skind with
+    | Instr(Call(_)) -> s
+    | Instr(Local_init(vi, ConsInit(fct, l, _), loc)) ->
+       let lv = (Var vi), NoOffset in
+       Cil.mkStmt (Instr(Call(Some(lv), Cil.evar(fct), l, loc)))
+  | _ -> assert false
+  in
   let stmt = Visitor.visitFramacStmt transformer s in
   let ret = affect (skip_skip (List.hd s.succs)).sid in
   [ stmt ; ret ]
@@ -192,7 +199,6 @@ let add_stmt kf stmt =
   let (def, th) = base_simulation name in
   let affect value = affect_pc_th_int th value loc in
   let transformer = Code_transformer.visitor th loc in 
-
   let body = match stmt.skind with
     | Instr(Set(_)) | Instr(Local_init(_,AssignInit(_),_)) ->
        set transformer affect stmt
@@ -201,10 +207,10 @@ let add_stmt kf stmt =
        let dum, result = call_ret transformer affect stmt th in
        return_loading kf stmt dum ;
        result
-    | Instr(Call(Some(_),_,_,_)) | Instr(Local_init(_,ConsInit(_),_)) ->
-       atomic_call_ret transformer affect stmt
-    | Instr(Call(None,_,_,_)) ->
+    | Instr(Call(None,_,_,_)) when not(Atomic_spec.atomic_call_stmt stmt) ->
        call_void transformer affect stmt th
+    | Instr(Call(_,_,_,_)) | Instr(Local_init(_,ConsInit(_),_)) ->
+       atomic_call transformer affect stmt
     | Return(_) ->
        return kf stmt th
     | If(_)     ->
@@ -213,11 +219,12 @@ let add_stmt kf stmt =
        switch transformer affect stmt loc
     | Block(_)  ->
        at_block transformer affect stmt
-    | Loop(_,b,_,_,_) when b.bstmts = [] -> 
+    | Loop(_,b,_,_,_) when b.bstmts = [] ->
        [affect stmt.sid]
-    | Loop(_,b,_,_,_) -> 
+    | Loop(_,b,_,_,_) ->
        [affect (skip_skip (List.hd b.bstmts)).sid]
-    | _ -> assert false
+    | _ ->
+       assert false
   in
   let ret_stmt = Cil.mkStmt (Return (None, loc)) in
   let block = Cil.mkBlock (body @ [ret_stmt]) in

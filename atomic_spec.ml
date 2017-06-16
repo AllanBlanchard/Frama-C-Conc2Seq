@@ -2,7 +2,6 @@ open Cil_types
 (*open Logic_const*)
 open Logic_typing
 
-
 let count = ref 0 
 let atomic_typer ~typing_context ~loc ps =
   let open Logic_ptree in
@@ -50,8 +49,9 @@ let atomic_call instr =
     | Local_init(_, ConsInit(fct, _, _), _) -> fct
     | _ -> assert false
   in
-  let kf = Globals.Functions.get fct in
-  atomic_fct kf
+  let old = Old_project.get() in
+  let kf = Project.on old Globals.Functions.get fct in
+  Project.on old atomic_fct kf
 
 let atomic_call_stmt s =
   match s.skind with
