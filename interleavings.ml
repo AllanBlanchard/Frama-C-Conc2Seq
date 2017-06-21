@@ -18,7 +18,7 @@ let case_identified id fvi th loc =
   let call = mkStmt (Instr(Call(None, (evar fvi), [evar th], loc))) in
   let n = Cil.new_exp ~loc:loc (Const(CInt64(of_int id, IInt, None))) in
   [ { call with labels = [Case(n, loc)] } ; mkStmt (Break loc) ]
-  
+
 let case_choose vi th loc = case_identified 0 vi th loc
 
 let case_stmt sid th loc =
@@ -26,11 +26,11 @@ let case_stmt sid th loc =
 
 let case_init sid th loc =
   case_identified (-sid) (Functions.simulation sid) th loc
-                  
+
 let all_case_init th loc =
   List.flatten
     (List.map (fun s -> case_init s th loc) ( Functions.ids() ))
-  
+
 let all_case_stmt th loc =
   List.flatten
     (List.map (fun s -> case_stmt s th loc) (Statements.simulations ()))
@@ -55,7 +55,7 @@ let build_code loc =
   let def = Cil.emptyFunction "interleave" in
   Cil.setReturnType def Cil.voidType ;
   let th  = makeLocalVar def "th" uintType in
-  
+
   let (_, decl) as f_choose = build_choose_call loc in
   choose_fun := Some f_choose ;
   (* Program_counter.spec_about f_choose 0 (map Functions.sid funcs) ; *)
@@ -75,7 +75,7 @@ let build_code loc =
   Cfg.clearCFGinfo def ;
   Cfg.cfgFun def ;
   interleave := Some def
-       
+
 let get_function loc =
   build_code loc ;
   match !interleave with

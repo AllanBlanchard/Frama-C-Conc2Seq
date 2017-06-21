@@ -4,14 +4,14 @@ module Fmap = Map.Make(struct type t = int let compare = compare end)
 
 let functions = ref Fmap.empty
 let stack_init = ref Fmap.empty
-                    
+
 let find_id kf =
   Kernel_function.get_id kf
 let find_var kf =
   Kernel_function.get_vi kf
 let in_old f p = Project.on (Old_project.get()) f p
 
-                         
+
 let build_init func =
   let name = "init_formals_" ^ func.vname in
   let typ = TFun(Cil.voidType, (Some ["th", Cil.uintType, []]), false, []) in
@@ -20,13 +20,13 @@ let build_init func =
   let spec = Cil.empty_funspec () in 
   Globals.Functions.replace_by_declaration spec decl (Cil.CurrentLoc.get());
   decl, spec
-  
+
 let add kf =
   let id = in_old find_id kf in
   functions := Fmap.add id kf !functions ;
   let vi = in_old find_var kf in
   stack_init := Fmap.add id (build_init vi) !stack_init
-                        
+
 let force_get id =
   if Fmap.mem id !functions then
     Fmap.find id !functions
@@ -35,7 +35,7 @@ let force_get id =
 
 let first_stmt id =
   in_old Kernel_function.find_first_stmt (force_get id)
-           
+
 let res_expression id =
   let stmt = in_old Kernel_function.find_return (force_get id) in
   match stmt.skind with

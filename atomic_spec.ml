@@ -7,15 +7,15 @@ let atomic_typer ~typing_context ~loc ps =
   let open Logic_ptree in
   match ps with
   | p :: [] when p.lexpr_node = PLtrue ->
-     Ext_preds [ typing_context.type_predicate
-                   typing_context
-                   (typing_context.post_state [Normal])
-                   p
-               ]
+    Ext_preds [ typing_context.type_predicate
+                  typing_context
+                  (typing_context.post_state [Normal])
+                  p
+              ]
   | [] ->
-     let id = !count in incr count ; Ext_id id
+    let id = !count in incr count ; Ext_id id
   | _ ->
-     typing_context.error loc "expecting a \true after keyword atomic"
+    typing_context.error loc "expecting a \true after keyword atomic"
 
 (* Definition of atomic extension for ACSL *)
 (* check if the given behavior bhv contains "atomic" mention *)
@@ -42,10 +42,10 @@ let atomic_fct kf =
 let atomic_call instr =
   let fct = match instr with
     | Call(_, e, _, _) ->
-       begin match e.enode with
-       | Lval(Var(fct), NoOffset) -> fct
-       | _ -> raise (Errors.BadConstruct "Function pointers")
-       end
+      begin match e.enode with
+        | Lval(Var(fct), NoOffset) -> fct
+        | _ -> raise (Errors.BadConstruct "Function pointers")
+      end
     | Local_init(_, ConsInit(fct, _, _), _) -> fct
     | _ -> assert false
   in
@@ -57,5 +57,5 @@ let atomic_call_stmt s =
   match s.skind with
   | Instr(i) -> atomic_call i
   | _ -> assert false
-             
+
 let () = register_behavior_extension "atomic" atomic_typer

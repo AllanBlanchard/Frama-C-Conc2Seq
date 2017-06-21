@@ -14,47 +14,47 @@ class expr_visitor prj th loc = object(me)
   method! vstmt_aux s =
     match s.skind with
     | Instr(Local_init(vi,AssignInit(SingleInit(e)),loc)) ->
-       let s = Cil.mkStmt(Instr(Set( (Var(vi), NoOffset), e, loc))) in
-       Cil.ChangeDoChildrenPost (s, fun s -> s)
+      let s = Cil.mkStmt(Instr(Set( (Var(vi), NoOffset), e, loc))) in
+      Cil.ChangeDoChildrenPost (s, fun s -> s)
     | Instr(Call(res, fct, l ,loc)) when Atomic_spec.atomic_call_stmt s ->
-       let res = match res with
-         | None   -> None
-         | Some lv -> Some (Visitor.visitFramacLval (me :> base_type) lv)
-       in
-       let fct = match fct.enode with
-         | Lval( (Var vi), NoOffset ) ->
-            Cil.new_exp ~loc (Lval( (Var (get_new_function vi)), NoOffset ))
-         | _ -> assert false
-       in
-       let l = List.map (Visitor.visitFramacExpr (me :> base_type)) l in
-       Cil.ChangeTo(Cil.mkStmt(Instr(Call(res, fct, l, loc))))
+      let res = match res with
+        | None   -> None
+        | Some lv -> Some (Visitor.visitFramacLval (me :> base_type) lv)
+      in
+      let fct = match fct.enode with
+        | Lval( (Var vi), NoOffset ) ->
+          Cil.new_exp ~loc (Lval( (Var (get_new_function vi)), NoOffset ))
+        | _ -> assert false
+      in
+      let l = List.map (Visitor.visitFramacExpr (me :> base_type)) l in
+      Cil.ChangeTo(Cil.mkStmt(Instr(Call(res, fct, l, loc))))
     | Instr(Local_init(vi, ConsInit(fct, l, _), loc)) ->
-       let res = Some (Vars.c_access vi.vid ~th:(Some th) ~no:NoOffset loc) in
-       let fct = Cil.new_exp ~loc (Lval( (Var (get_new_function fct)), NoOffset)) in
-       let l = List.map (Visitor.visitFramacExpr (me :> base_type)) l in
-       Cil.ChangeTo(Cil.mkStmt(Instr(Call(res, fct, l, loc))))
+      let res = Some (Vars.c_access vi.vid ~th:(Some th) ~no:NoOffset loc) in
+      let fct = Cil.new_exp ~loc (Lval( (Var (get_new_function fct)), NoOffset)) in
+      let l = List.map (Visitor.visitFramacExpr (me :> base_type)) l in
+      Cil.ChangeTo(Cil.mkStmt(Instr(Call(res, fct, l, loc))))
     | Instr(Call(_, _, _ ,_)) ->
-       raise (BadConstruct "Non atomic calls from atomic block")
+      raise (BadConstruct "Non atomic calls from atomic block")
     | Block(_) when Atomic_spec.atomic_stmt s ->
-       raise (BadConstruct "Nested Atomic blocks")
+      raise (BadConstruct "Nested Atomic blocks")
     | _ -> Cil.DoChildren
 
-                                 
+
   method! vblock _ =
     let modify b = { b with blocals = [] } in
     Cil.DoChildrenPost modify
-         
+
   method! vlval _ = 
     let modify (host, offset) =
       match host with
       | Var(vi) when Thread_local.is_thread_local vi ->
-         Vars.c_access vi.vid ~th:(Some th) ~no:offset loc
+        Vars.c_access vi.vid ~th:(Some th) ~no:offset loc
       | Var(vi) when vi.vglob ->
-         Vars.c_access vi.vid ~th:(None   ) ~no:offset loc
+        Vars.c_access vi.vid ~th:(None   ) ~no:offset loc
       | Var(vi) ->
-         Vars.c_access vi.vid ~th:(Some th) ~no:offset loc
+        Vars.c_access vi.vid ~th:(Some th) ~no:offset loc
       | _       ->
-         host, offset
+        host, offset
     in
     Cil.DoChildrenPost modify
 end
@@ -62,7 +62,7 @@ end
 let visitor th loc =
   match !partial_visitor with
   | None ->
-     let v = new expr_visitor (Old_project.get()) in
-     partial_visitor := Some v ;
-     v th loc
+    let v = new expr_visitor (Old_project.get()) in
+    partial_visitor := Some v ;
+    v th loc
   | Some v -> v th loc

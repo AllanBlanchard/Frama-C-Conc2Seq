@@ -24,7 +24,7 @@ let finalize def body loc =
 let affect_pc_th th exp loc = 
   let access = Vars.c_access (-1) ~th:(Some th) loc in
   Cil.mkStmt(Instr(Set(access, (Cil.new_exp loc exp), loc)))
-            
+
 let affect_pc_th_int th value loc =
   let const  = Const(CInt64(Integer.of_int value, IInt, None)) in
   let access = Vars.c_access (-1) ~th:(Some th) loc in
@@ -42,14 +42,14 @@ let rec skip_skip stmt =
     -> skip_skip (List.hd stmt.succs)
   | Goto(r_next, _) -> skip_skip !r_next
   | _ -> stmt
-            
+
 let set transformer affect s =
   let next = (skip_skip (List.hd s.succs)).sid in
   let ret = affect next in
   let s = match s.skind with
     | Instr(Set(_)) -> s                         
     | Instr(Local_init(vi,AssignInit(SingleInit(e)),loc)) ->
-       Cil.mkStmt(Instr(Set( (Var(vi), NoOffset), e, loc)))
+      Cil.mkStmt(Instr(Set( (Var(vi), NoOffset), e, loc)))
     | _ -> assert false
   in
   let nstmt = Visitor.visitFramacStmt transformer s in
@@ -62,7 +62,7 @@ let call transformer affect fct le next th loc =
     Cil.mkStmt(Instr(Set(nv, ne, loc)))
   in
   let loads = List.map2 load (Functions.formals fct.vid) le in
-  
+
   let from_stmt = affect_from fct th next loc in
   let fst_kf  = Functions.first_stmt fct.vid in
   let pc_stmt = affect fst_kf.sid in
@@ -73,12 +73,12 @@ let call_ret transformer affect s th =
   let next_call = dummy.sid in
   let fct, l, loc = match s.skind with
     | Instr(Call(Some(_), e, l ,loc)) ->
-       begin match e.enode with
-       | Lval(Var(fct), NoOffset) -> fct, l, loc
-       | _                        -> assert false
-       end
+      begin match e.enode with
+        | Lval(Var(fct), NoOffset) -> fct, l, loc
+        | _                        -> assert false
+      end
     | Instr(Local_init(_, ConsInit(fct, l, _), loc)) ->
-       fct, l, loc
+      fct, l, loc
     | _ -> assert false
   in
   dummy, call transformer affect fct l next_call th loc
@@ -87,26 +87,26 @@ let atomic_call transformer affect s =
   let s = match s.skind with
     | Instr(Call(_)) -> s
     | Instr(Local_init(vi, ConsInit(fct, l, _), loc)) ->
-       let lv = (Var vi), NoOffset in
-       Cil.mkStmt (Instr(Call(Some(lv), Cil.evar(fct), l, loc)))
-  | _ -> assert false
+      let lv = (Var vi), NoOffset in
+      Cil.mkStmt (Instr(Call(Some(lv), Cil.evar(fct), l, loc)))
+    | _ -> assert false
   in
   let stmt = Visitor.visitFramacStmt transformer s in
   let ret = affect (skip_skip (List.hd s.succs)).sid in
   [ stmt ; ret ]
-              
+
 let call_void transformer affect s th =
   let next_call = (skip_skip (List.hd s.succs)).sid in
   let fct, l, loc = match s.skind with
     | Instr(Call(None, e, l ,loc)) ->
-       begin match e.enode with
-       | Lval(Var(fct), NoOffset) -> fct, l, loc
-       | _                        -> assert false
-       end
+      begin match e.enode with
+        | Lval(Var(fct), NoOffset) -> fct, l, loc
+        | _                        -> assert false
+      end
     | _ -> assert false
   in
   call transformer affect fct l next_call th loc
-  
+
 let return kf stmt th =
   (* The call to get_vi is NOT SAFE but the way it is implemented (Silicon) *)
   (* does not depend on the global state, so it is OK there.                *) 
@@ -141,35 +141,35 @@ let switch transformer affect s loc =
 let after_block_aux s =
   match s.skind with
   | Block(b) ->
-     let rec close s1 s2 =
-       match List.mem b (Kernel_function.blocks_closed_by_edge s1 s2) with
-       | true -> s2
-       | _ -> close s2 (List.hd s2.succs)
-     in close s (List.hd s.succs)
+    let rec close s1 s2 =
+      match List.mem b (Kernel_function.blocks_closed_by_edge s1 s2) with
+      | true -> s2
+      | _ -> close s2 (List.hd s2.succs)
+    in close s (List.hd s.succs)
   | _ -> assert false
 
 let after_block s =
   let prj = Old_project.get() in
   Project.on prj after_block_aux s
-                
+
 let at_block transformer affect s =
   assert (Atomic_spec.atomic_stmt s) ;
   match s.skind with
   | Block(b) ->
-     let fs = skip_skip (after_block s) in
-     let block = Visitor.visitFramacBlock transformer b in
-     let ret = affect (skip_skip fs).sid in
-     let b = { block with bstmts = (block.bstmts @ [ret]) } in
-     [Cil.mkStmt (Block b)]
+    let fs = skip_skip (after_block s) in
+    let block = Visitor.visitFramacBlock transformer b in
+    let ret = affect (skip_skip fs).sid in
+    let b = { block with bstmts = (block.bstmts @ [ret]) } in
+    [Cil.mkStmt (Block b)]
   | _ -> assert false
 
 let return_loading kf stmt dum =
   let ret, fct, loc = match stmt.skind with
     | Instr(Call(Some(var), e, _, loc)) ->
-       begin match e.enode with
-       | Lval(Var(fct), NoOffset) -> var, fct, loc
-       | _                        -> assert false
-       end
+      begin match e.enode with
+        | Lval(Var(fct), NoOffset) -> var, fct, loc
+        | _                        -> assert false
+      end
     | Instr(Local_init(vi,ConsInit(fct, _, _), loc)) ->
       ((Var vi), NoOffset), fct, loc
     | _ -> assert false
@@ -190,7 +190,7 @@ let return_loading kf stmt dum =
   finalize def block loc ;
   statements := Smap.add dum.sid def !statements ;
   ()
-    
+
 let add_stmt kf stmt =
   (* The call to get_vi is NOT SAFE but the way it is implemented (Silicon) *)
   (* does not depend on the global state, so it is OK there.                *) 
@@ -201,30 +201,30 @@ let add_stmt kf stmt =
   let transformer = Code_transformer.visitor th loc in 
   let body = match stmt.skind with
     | Instr(Set(_)) | Instr(Local_init(_,AssignInit(_),_)) ->
-       set transformer affect stmt
+      set transformer affect stmt
     | Instr(Call(Some(_),_,_,_)) | Instr(Local_init(_,ConsInit(_),_))
-         when not(Atomic_spec.atomic_call_stmt stmt) ->
-       let dum, result = call_ret transformer affect stmt th in
-       return_loading kf stmt dum ;
-       result
+      when not(Atomic_spec.atomic_call_stmt stmt) ->
+      let dum, result = call_ret transformer affect stmt th in
+      return_loading kf stmt dum ;
+      result
     | Instr(Call(None,_,_,_)) when not(Atomic_spec.atomic_call_stmt stmt) ->
-       call_void transformer affect stmt th
+      call_void transformer affect stmt th
     | Instr(Call(_,_,_,_)) | Instr(Local_init(_,ConsInit(_),_)) ->
-       atomic_call transformer affect stmt
+      atomic_call transformer affect stmt
     | Return(_) ->
-       return kf stmt th
+      return kf stmt th
     | If(_)     ->
-       cond transformer affect stmt loc
+      cond transformer affect stmt loc
     | Switch(_) ->
-       switch transformer affect stmt loc
+      switch transformer affect stmt loc
     | Block(_)  ->
-       at_block transformer affect stmt
+      at_block transformer affect stmt
     | Loop(_,b,_,_,_) when b.bstmts = [] ->
-       [affect stmt.sid]
+      [affect stmt.sid]
     | Loop(_,b,_,_,_) ->
-       [affect (skip_skip (List.hd b.bstmts)).sid]
+      [affect (skip_skip (List.hd b.bstmts)).sid]
     | _ ->
-       assert false
+      assert false
   in
   let ret_stmt = Cil.mkStmt (Return (None, loc)) in
   let block = Cil.mkBlock (body @ [ret_stmt]) in
@@ -238,6 +238,6 @@ let simulation sid =
 
 let simulations () =
   Smap.fold (fun k _ l -> k :: l) !statements []
-  
+
 let globals loc =
   List.map (fun (_, f) -> GFun(f, loc)) (Smap.bindings !statements)

@@ -18,7 +18,7 @@ let initialize_pc () =
   let rpc = Cil.makeGlobalVar "pc" (TPtr (Cil.intType, [])) in
   Globals.Vars.add_decl rpc ;
   pc := Some rpc
-                   
+
 let add_thread_local var _ =
   assert(var.vglob && Thread_local.is_thread_local var) ;
   let simulation = create_simulation "tl" var in    
@@ -42,7 +42,7 @@ let add_function func =
   fromvars := Vmap.add vi.vid simulation !fromvars
 
 let get_pc () = match !pc with None -> assert false | Some v -> v
-                      
+
 let simulations loc =
   let p = get_pc() in
   let t = Vmap.fold (fun _ v l      -> v :: l) !thlocals [] in
@@ -61,20 +61,20 @@ let ptr_of_local vid =
 let c_access vid ?th:(th=None) ?no:(no=NoOffset) loc =
   match th with
   | None ->
-     assert(Vmap.mem vid !globals) ;
-     Var( fst (Vmap.find vid !globals) ), no
+    assert(Vmap.mem vid !globals) ;
+    Var( fst (Vmap.find vid !globals) ), no
   | Some th ->
-     let ptr = ptr_of_local vid in
-     let exp = Cil.mkBinOp ~loc PlusPI (Cil.evar ptr) (Cil.evar th) in
-     Cil.mkMem ~addr:exp ~off:no
+    let ptr = ptr_of_local vid in
+    let exp = Cil.mkBinOp ~loc PlusPI (Cil.evar ptr) (Cil.evar th) in
+    Cil.mkMem ~addr:exp ~off:no
 
 
 let l_access vid ?th:(th=None) ?no:(no=TNoOffset) loc =
   match th with
   | None ->
-     assert(Vmap.mem vid !globals) ;
-     TVar(Cil.cvar_to_lvar (fst (Vmap.find vid !globals))), no
+    assert(Vmap.mem vid !globals) ;
+    TVar(Cil.cvar_to_lvar (fst (Vmap.find vid !globals))), no
   | Some th ->
-     let ptr = ptr_of_local vid in
-     let exp = Cil.mkBinOp ~loc PlusPI (Cil.evar ptr) (Cil.evar th) in
-     Cil.mkTermMem ~addr:(Logic_utils.expr_to_term true exp) ~off:no
+    let ptr = ptr_of_local vid in
+    let exp = Cil.mkBinOp ~loc PlusPI (Cil.evar ptr) (Cil.evar th) in
+    Cil.mkTermMem ~addr:(Logic_utils.expr_to_term true exp) ~off:no
