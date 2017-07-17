@@ -4,13 +4,17 @@ class empty_project prj = object(_)
   inherit Visitor.frama_c_copy prj
 
   method! vglob_aux g =
-    let open Globals.Functions in
+    let atomic_fct vi =
+      let kf = Query.sload Globals.Functions.get vi in
+      Query.sload Atomic_spec.atomic_fct kf
+    in
+    
     match g with
     | GVar(vi, _, _) | GVarDecl(vi, _) when Thread_local.is_thread_local vi ->
       let modify _ = [] in Cil.DoChildrenPost modify
-    | GFun(f, _) when not (Atomic_spec.atomic_fct (get f.svar)) ->
+    | GFun(f, _) when not (atomic_fct f.svar) ->
       let modify _ = [] in Cil.DoChildrenPost modify
-    | GFunDecl(_, vi, _) when not (Atomic_spec.atomic_fct (get vi)) ->
+    | GFunDecl(_, vi, _) when not (atomic_fct vi) ->
       let modify _ = [] in Cil.DoChildrenPost modify
     | GAnnot(Dinvariant(_),_) ->
       let modify _ = [] in Cil.DoChildrenPost modify
@@ -80,22 +84,22 @@ let collect_stmts () =
   Globals.Functions.iter collect ;
   collector#get_list()
 
-class visitor old_prj = object(_)
+class visitor = object(_)
   inherit Visitor.frama_c_inplace
 
   method! vfile _ =
     Options.Self.feedback "Called" ;
     Vars.initialize_pc () ;
-    let th_locals = Project.on old_prj collect_thread_locals () in
+    let th_locals = Query.sload collect_thread_locals () in
     List.iter (fun (v,ii) -> Vars.add_thread_local v ii) th_locals ;
     let globals   = collect_globals () in
     List.iter (fun (v,ii) -> Vars.add_global v ii) globals ;
-    let locals = Project.on old_prj collect_locals () in
+    let locals = Query.sload collect_locals () in
     List.iter (fun (f,v ) -> Vars.add_local f v) locals ;
-    let functions = Project.on old_prj collect_functions () in
+    let functions = Query.sload collect_functions () in
     List.iter (fun f -> Vars.add_function f) functions ;
     List.iter (fun f -> Functions.add f) functions ;
-    let statements = Project.on old_prj collect_stmts () in
+    let statements = Query.sload collect_stmts () in
     List.iter (fun (kf, s) -> Statements.add_stmt kf s) statements ;
 
     let loc = Cil.CurrentLoc.get() in
@@ -158,14 +162,16 @@ class visitor old_prj = object(_)
     Cil.DoChildrenPost modify
 end
 
-let create_from old_prj = 
+let create_from () = 
   let ast = Ast.get() in
-  Visitor.visitFramacFile (new visitor old_prj) ast
+  Visitor.visitFramacFile (new visitor) ast
 
-let make _ (*old_ast*) =
-  let old_prj = Project.current () in
-  let prj = File.create_project_from_visitor "Simulation" (new empty_project) in
-  let _ = Project.on prj create_from old_prj in
-  Project.on prj Ast.mark_as_changed () ;
-  Project.on prj Ast.compute () ;
+let make () =
+  let empty = new empty_project in
+  let create = File.create_project_from_visitor in
+  let prj = Query.sload create "Simulation" empty in
+  Query.add_simulation prj ;
+  ignore (Query.simulation create_from ()) ;
+  Query.simulation Ast.mark_as_changed () ;
+  Query.simulation Ast.compute () ;
   prj

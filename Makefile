@@ -4,7 +4,7 @@ PLUGIN_NAME = Conc2Seq
 PLUGIN_CMO = \
 	errors\
 	options\
-	old_project\
+	query\
 	atomic_spec\
 	atomic_header\
 	thread_local\

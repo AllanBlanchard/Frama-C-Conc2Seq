@@ -9,7 +9,7 @@ let find_id kf =
   Kernel_function.get_id kf
 let find_var kf =
   Kernel_function.get_vi kf
-let in_old f p = Project.on (Old_project.get()) f p
+let in_old f p = Query.sload f p
 
 
 let build_init func =

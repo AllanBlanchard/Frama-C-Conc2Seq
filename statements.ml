@@ -149,14 +149,15 @@ let after_block_aux s =
   | _ -> assert false
 
 let after_block s =
-  let prj = Old_project.get() in
-  Project.on prj after_block_aux s
+  Query.sload after_block_aux s
 
 let at_block transformer affect s =
   assert (Atomic_spec.atomic_stmt s) ;
+  Options.Self.feedback "here";
   match s.skind with
   | Block(b) ->
     let fs = skip_skip (after_block s) in
+    Options.Self.feedback "there";
     let block = Visitor.visitFramacBlock transformer b in
     let ret = affect (skip_skip fs).sid in
     let b = { block with bstmts = (block.bstmts @ [ret]) } in
@@ -180,7 +181,7 @@ let return_loading kf stmt dum =
   let (def, th) = base_simulation name in
 
   let ret_exp = Functions.res_expression fct.vid in
-  let transformer = Code_transformer.visitor th loc in
+  let transformer = Code_transformer.visitor (Project.current()) th loc in
   let ret   = Visitor.visitFramacLval transformer ret in
   let value = Visitor.visitFramacExpr transformer ret_exp in
   let create_return = Cil.mkStmt(Instr(Set(ret,value,loc))) in
@@ -198,7 +199,7 @@ let add_stmt kf stmt =
   let loc  = Cil_datatype.Stmt.loc stmt in
   let (def, th) = base_simulation name in
   let affect value = affect_pc_th_int th value loc in
-  let transformer = Code_transformer.visitor th loc in 
+  let transformer = Code_transformer.visitor (Project.current()) th loc in 
   let body = match stmt.skind with
     | Instr(Set(_)) | Instr(Local_init(_,AssignInit(_),_)) ->
       set transformer affect stmt

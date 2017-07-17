@@ -1,1 +1,1 @@
-val visitor : Cil_types.varinfo -> Cil_types.location -> Visitor.frama_c_copy
+val visitor : Project.t -> Cil_types.varinfo -> Cil_types.location -> Visitor.frama_c_copy

@@ -1,22 +1,29 @@
 let run () =
-  Old_project.initialize (Project.current()) ;
-  let sl_prj = Single_load.make "Single memory loads" in
+  Query.prepare (Project.current()) ;
+  
+  let sl_prj, orig_to_sl =
+      try
+        Single_load.make "Single memory loads"
+      with
+      | Errors.BadConstruct(s) ->
+        Options.Self.error "%s are forbidden" s ;
+        failwith s
+  in
+  Query.add_sload orig_to_sl sl_prj ;
+  
   if Options.Check.get() then
-    Project.on sl_prj Filecheck.check_ast "Checking" ;
-
-  (*
-  let ast = Project.on sl_prj Ast.get() in
+    Query.sload Filecheck.check_ast "Checking" ;
+      
   try
-    let sim_prj = Project.on sl_prj Simulation.make ast in
+    ignore (Simulation.make ()) ;
     if Options.Check.get() then
-      Project.on sim_prj Filecheck.check_ast "Checking"
+      Query.simulation Filecheck.check_ast "Checking"
   with
   | Errors.BadConstruct(s) ->
      Options.Self.error "%s are forbidden" s
   | Errors.MissingAtomicFile(s) ->
      Options.Self.error "%s not found, atomic.h not included ?" s
     ;
-   *)
   ()
 
 let () = 

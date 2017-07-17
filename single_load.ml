@@ -16,7 +16,7 @@ let find_name lv = try
     ignore Visitor.(visitFramacLval (new name_finder :> inplace) lv) ; "aux"
   with (Name s) -> s
 
-class visitor prj = object(me)
+class visitor bhv_ref prj = object(me)
   inherit copy prj
 
   method private pr_vexp  e  = Visitor.visitFramacExpr (me :> copy) e
@@ -27,19 +27,26 @@ class visitor prj = object(me)
       
   val mutable insert_ph = false
 
+  method! vfile _ =
+    bhv_ref := Some me#behavior ;
+    Cil.DoChildren
+  
   method! vfunc _ =
     Cil.DoChildrenPost
       (fun f -> Cfg.clearCFGinfo ~clear_id:false f ; Cfg.cfgFun f ; f)
 
   method! vstmt_aux s =
+    let open Atomic_spec in
     if insert_ph then begin
       insert_ph <- false ; me#queueInstr [Cil.dummyInstr]
     end ;
     match s.skind with
-    | Block(_) when Atomic_spec.atomic_stmt(s) -> Cil.JustCopy
+    | Block(_) when Query.original atomic_stmt s ->
+      Cil.JustCopy
     | _ -> Cil.DoChildren
 
   method! vinst inst =
+    let open Atomic_spec in
     let replace lv =
       match lv with
       | Var(vi), o -> Var(me#pr_nvi vi), me#pr_voff o
@@ -48,7 +55,7 @@ class visitor prj = object(me)
     
     match inst with
     | Local_init(vi, ConsInit(fvi, l, k), loc) ->
-      insert_ph <- not (Atomic_spec.atomic_call inst) ;
+      insert_ph <- not (Query.original atomic_call inst) ;
       let nvi  = me#pr_nvi vi in
       let nfvi = me#pr_nvi fvi in
       let nl   = List.map (me#pr_vexp) l in
@@ -62,7 +69,7 @@ class visitor prj = object(me)
           raise (Errors.BadConstruct "function pointers")
       in
       let nl = List.map (me#pr_vexp) l in
-      insert_ph <- not (Atomic_spec.atomic_call inst) ;
+      insert_ph <- not (Query.original atomic_call inst) ;
       Cil.ChangeTo([Call(Some(nlv), nf, nl, loc)])
     | Set(lv, e, loc) ->
       Cil.ChangeTo([Set( (replace lv), (me#pr_vexp e), loc)])
@@ -110,4 +117,9 @@ class visitor prj = object(me)
     in Cil.DoChildrenPost modify
 end
 
-let make name = File.create_project_from_visitor name (new visitor) 
+let make name =
+  let bhv = ref None in
+  let prj = File.create_project_from_visitor name (new visitor bhv) in
+  match !bhv with
+  | None     -> assert false
+  | Some bhv -> (prj, bhv)

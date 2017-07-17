@@ -1,1 +1,1 @@
-val make : Cil_types.file -> Project.t
+val make : unit -> Project.t

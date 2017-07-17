@@ -49,9 +49,7 @@ let atomic_call instr =
     | Local_init(_, ConsInit(fct, _, _), _) -> fct
     | _ -> assert false
   in
-  let old = Old_project.get() in
-  let kf = Project.on old Globals.Functions.get fct in
-  Project.on old atomic_fct kf
+  atomic_fct (Globals.Functions.get fct)
 
 let atomic_call_stmt s =
   match s.skind with
