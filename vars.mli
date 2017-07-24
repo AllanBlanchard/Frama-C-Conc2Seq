@@ -10,3 +10,4 @@ val c_access: int -> ?th:varinfo option -> ?no:offset -> location -> lval
 val l_access: int -> ?th:varinfo option -> ?no:term_offset -> location -> term_lval
 
 val simulations : location -> global list
+val ids : unit -> int list

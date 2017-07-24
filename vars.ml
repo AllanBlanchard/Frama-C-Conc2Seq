@@ -43,13 +43,21 @@ let add_function func =
 
 let get_pc () = match !pc with None -> assert false | Some v -> v
 
-let simulations loc =
+let ids () = 
+  let t = Vmap.fold (fun v _ l      -> v :: l) !thlocals [] in
+  let l = Vmap.fold (fun v _ l      -> v :: l) !locals [] in
+  let f = Vmap.fold (fun v _ l      -> v :: l) !fromvars [] in
+  -1 :: t @ l @ f
+  
+let simulations_vis () = 
   let p = get_pc() in
   let t = Vmap.fold (fun _ v l      -> v :: l) !thlocals [] in
   let l = Vmap.fold (fun _ v l      -> v :: l) !locals [] in
   let f = Vmap.fold (fun _ v l      -> v :: l) !fromvars [] in
-  let all = p :: t @ l @ f in
-  List.map (fun v -> GVar(v, {init=None}, loc)) all
+  p :: t @ l @ f
+  
+let simulations loc =
+  List.map (fun v -> GVar(v, {init=None}, loc)) (simulations_vis())
 
 let ptr_of_local vid =
   if      vid = -1               then get_pc ()
