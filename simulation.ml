@@ -101,17 +101,20 @@ class visitor = object(_)
     List.iter (fun f -> Vars.add_function f) functions ;
     List.iter (fun f -> Functions.add f) functions ;
     List.iter (fun (kf, s) -> Statements.add_stmt kf s) statements ;
-
-    let loc = Cil.CurrentLoc.get() in
-    let vglobals = Vars.simulations loc in
-    let fglobals = Statements.globals loc in
-    let iglobals = Functions.init_simulations loc in
-    let ilv = Interleavings.get_function loc in
-    let choose = Interleavings.get_choose loc in
-    
-    let modify f =
-      let vannots  = [GAnnot ((Axioms.get loc), loc)] in
+    Interleavings.build_function (Cil.CurrentLoc.get()) ;
+    Simfuncs_spec.add_th_parameter_validity () ;
+    Simfuncs_spec.add_simulation_invariant () ;
+    (*Simfuncs_spec.add_user_invariant user_invariant ;*)
       
+    let modify f =
+      let loc = Cil.CurrentLoc.get() in
+      let vglobals = Vars.simulations loc in
+      let fglobals = Statements.globals loc in
+      let iglobals = Functions.init_simulations loc in
+      let ilv = Interleavings.get_function loc in
+      let choose = Interleavings.get_choose loc in
+      let vannots  = [GAnnot ((Axioms.get loc), loc)] in
+          
       f.globals <-
         vglobals
         @ vannots
@@ -136,7 +139,7 @@ class visitor = object(_)
     let modify v = in_atomic_func <- false ; v in
     Cil.DoChildrenPost modify
 
-  (* should be done somewhere else *)
+  (* maybe we should do this somewhere else *)
   method! vlval _ =
     let loc = Cil.CurrentLoc.get() in
     let modify (host, offset) =

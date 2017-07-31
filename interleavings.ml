@@ -2,6 +2,7 @@ open Cil_types
 
 let choose_fun = ref None
 let interleave = ref None
+let loop_stmt = ref None
 
 let build_choose_call loc =
   let name = "choose_call" in
@@ -89,10 +90,14 @@ let build_code loc =
   def.svar.vdefined <- true ;
   Cfg.clearCFGinfo def ;
   Cfg.cfgFun def ;
-  interleave := Some def
+  interleave := Some def ;
+  loop_stmt := Some loop
+
+
+let build_function loc =
+  build_code loc
 
 let get_function loc =
-  build_code loc ;
   match !interleave with
   | None -> assert false
   | Some fd -> GFun(fd, loc)
@@ -101,3 +106,25 @@ let get_choose loc =
   match !choose_fun with
   | None -> assert false
   | Some (fs, vi) -> GFunDecl(fs, vi, loc)
+
+let force_get r =
+  match !r with None -> assert false | Some v -> v
+
+let force_get_kf () = Globals.Functions.get (force_get interleave).svar
+let force_get_choose () = Globals.Functions.get (snd (force_get choose_fun))
+let force_get_loop () = force_get loop_stmt
+
+let add_invariant p =
+  let open Logic_const in
+  let open Annotations in
+  let kf   = force_get_kf () in
+  let loop = force_get_loop () in
+  let choose = force_get_choose () in
+  let loop_inv = new_code_annotation (AInvariant([], true, p)) in
+  (*let loop_false = new_code_annotation (AInvariant([], true, pfalse)) in*)
+  
+  add_requires Options.emitter kf [new_predicate p] ;
+  add_code_annot Options.emitter ~kf loop loop_inv ;
+  (*add_code_annot Options.emitter ~kf loop loop_false ;*)
+  add_requires Options.emitter choose [new_predicate p] ;
+  add_ensures Options.emitter choose ([Normal, new_predicate p])

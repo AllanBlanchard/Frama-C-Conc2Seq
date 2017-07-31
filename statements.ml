@@ -242,3 +242,31 @@ let simulations () =
 
 let globals loc =
   List.map (fun (_, f) -> GFun(f, loc)) (Smap.bindings !statements)
+
+
+let force_get id =
+  if Smap.mem id !statements then
+    Globals.Functions.get (Smap.find id !statements).svar
+  else
+    assert false
+
+let th_parameter kf =
+  match Kernel_function.get_formals kf with [th] -> th | _ -> assert false
+
+let add_requires id p =
+  let id_p = Logic_const.new_predicate p in
+  Annotations.add_requires Options.emitter (force_get id) [id_p]
+  
+let add_requires_thread id p_from_th =
+  let lth = Cil.cvar_to_lvar(th_parameter (force_get id)) in
+  let th = Logic_const.tlogic_coerce (Logic_const.tvar lth) Linteger in
+  add_requires id (p_from_th th)
+
+let add_ensures id p =
+  let id_p = Logic_const.new_predicate p in
+  Annotations.add_ensures Options.emitter (force_get id) [Normal, id_p]
+    
+let add_ensures_thread id p_from_th =
+  let lth = Cil.cvar_to_lvar(th_parameter (force_get id)) in
+  let th = Logic_const.tlogic_coerce (Logic_const.tvar lth) Linteger in
+  add_ensures id (p_from_th th)

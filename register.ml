@@ -15,16 +15,15 @@ let run () =
     Query.sload Filecheck.check_ast "Checking" ;
       
   try
-    ignore (Simulation.make ()) ;
+    ignore( Simulation.make () ) ;
     if Options.Check.get() then
-      Query.simulation Filecheck.check_ast "Checking"
+      Query.simulation Filecheck.check_ast "Checking" ;
   with
   | Errors.BadConstruct(s) ->
-     Options.Self.error "%s are forbidden" s
+    Options.Self.error "%s are forbidden" s
   | Errors.MissingAtomicFile(s) ->
-     Options.Self.error "%s not found, atomic.h not included ?" s
-    ;
-  ()
+    Options.Self.error "%s not found, atomic.h not included ?" s
+      
 
 let () = 
   Db.Main.extend run

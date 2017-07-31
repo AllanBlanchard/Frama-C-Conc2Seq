@@ -1,4 +1,11 @@
-val add_stmt : Cil_types.kernel_function -> Cil_types.stmt -> unit
-val globals: Cil_types.location -> Cil_types.global list
-val simulation: int -> Cil_types.fundec
+open Cil_types
+
+val add_stmt : kernel_function -> stmt -> unit
+val globals: location -> global list
+val simulation: int -> fundec
 val simulations: unit -> int list
+
+val add_requires : int -> predicate -> unit
+val add_requires_thread : int-> (term -> predicate) -> unit
+val add_ensures : int -> predicate -> unit
+val add_ensures_thread : int -> (term -> predicate) -> unit

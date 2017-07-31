@@ -12,11 +12,12 @@ PLUGIN_CMO = \
 	single_load\
 	vars\
 	vars_spec\
-	axioms\
 	functions\
+	axioms\
 	code_transformer\
 	statements\
 	interleavings\
+	simfuncs_spec\
 	simulation\
 	core\
 	register
