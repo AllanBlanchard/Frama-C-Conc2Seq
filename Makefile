@@ -8,8 +8,11 @@ PLUGIN_CMO = \
 	atomic_spec\
 	atomic_header\
 	thread_local\
+	simulation_invariant\
 	single_load\
 	vars\
+	vars_spec\
+	axioms\
 	functions\
 	code_transformer\
 	statements\

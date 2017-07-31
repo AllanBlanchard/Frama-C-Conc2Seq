@@ -48,7 +48,11 @@ let ids () =
   let l = Vmap.fold (fun v _ l      -> v :: l) !locals [] in
   let f = Vmap.fold (fun v _ l      -> v :: l) !fromvars [] in
   -1 :: t @ l @ f
-  
+
+
+let global_vis () =
+  Vmap.fold (fun _ (v, _) l -> v :: l) !globals []
+
 let simulations_vis () = 
   let p = get_pc() in
   let t = Vmap.fold (fun _ v l      -> v :: l) !thlocals [] in
@@ -66,6 +70,8 @@ let ptr_of_local vid =
   else if Vmap.mem vid !fromvars then Vmap.find vid !fromvars
   else (Options.Self.feedback "Accessing %d" vid ; assert false)
 
+let sname vid = (ptr_of_local vid).vname
+
 let c_access vid ?th:(th=None) ?no:(no=NoOffset) loc =
   match th with
   | None ->
@@ -73,8 +79,18 @@ let c_access vid ?th:(th=None) ?no:(no=NoOffset) loc =
     Var( fst (Vmap.find vid !globals) ), no
   | Some th ->
     let ptr = ptr_of_local vid in
-    let exp = Cil.mkBinOp ~loc PlusPI (Cil.evar ptr) (Cil.evar th) in
+    let exp = Cil.mkBinOp ~loc PlusPI (Cil.evar ptr) th in
     Cil.mkMem ~addr:exp ~off:no
+
+let l_ptrvalue vid loc =
+  let open Logic_const in
+  let ptr = ptr_of_local vid in
+  tvar ~loc (Cil.cvar_to_lvar ptr)
+
+let l_memloc vid th loc =
+  let open Logic_const in
+  let tptr = l_ptrvalue vid loc in
+  term ~loc (TBinOp(PlusPI, tptr, th)) (tptr.term_type)  
 
 
 let l_access vid ?th:(th=None) ?no:(no=TNoOffset) loc =
@@ -83,6 +99,5 @@ let l_access vid ?th:(th=None) ?no:(no=TNoOffset) loc =
     assert(Vmap.mem vid !globals) ;
     TVar(Cil.cvar_to_lvar (fst (Vmap.find vid !globals))), no
   | Some th ->
-    let ptr = ptr_of_local vid in
-    let exp = Cil.mkBinOp ~loc PlusPI (Cil.evar ptr) (Cil.evar th) in
-    Cil.mkTermMem ~addr:(Logic_utils.expr_to_term true exp) ~off:no
+    let term = l_memloc vid th loc in
+    Cil.mkTermMem ~addr:term ~off:no

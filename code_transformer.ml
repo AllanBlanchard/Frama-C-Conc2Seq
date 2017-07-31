@@ -11,6 +11,8 @@ class base_type = Visitor.frama_c_copy
 class expr_visitor prj th loc = object(me)
   inherit base_type prj
 
+  val th = Cil.evar th
+  
   method private pr_vexp  e  = Visitor.visitFramacExpr (me :> base_type) e
   method private pr_vlval lv = Visitor.visitFramacLval (me :> base_type) lv
   

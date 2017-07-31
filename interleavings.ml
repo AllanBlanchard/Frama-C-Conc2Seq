@@ -17,9 +17,11 @@ let case_identified id fvi th loc =
   let open Integer in
   let call = mkStmt (Instr(Call(None, (evar fvi), [evar th], loc))) in
   let n = Cil.new_exp ~loc:loc (Const(CInt64(of_int id, IInt, None))) in
-  [ { call with labels = [Case(n, loc)] } ; mkStmt (Break loc) ]
+  let call = { call with labels = [Case(n, loc)] } in
+  call , [ call ; mkStmt (Break loc) ]
 
-let case_choose vi th loc = case_identified 0 vi th loc
+let case_choose vi th loc =
+  case_identified 0 vi th loc
 
 let case_stmt sid th loc =
   case_identified sid (Statements.simulation sid).svar th loc
@@ -28,21 +30,34 @@ let case_init sid th loc =
   case_identified (-sid) (Functions.simulation sid) th loc
 
 let all_case_init th loc =
-  List.flatten
-    (List.map (fun s -> case_init s th loc) ( Functions.ids() ))
+  let (starts, blocks) =
+    List.fold_left (
+      fun (ls, lb) id ->
+        let (s, b) = case_init id th loc in
+        (s :: ls) , (b :: lb)
+    ) ([],[]) ( Functions.ids() ) 
+  in
+  starts, List.flatten blocks
 
 let all_case_stmt th loc =
-  List.flatten
-    (List.map (fun s -> case_stmt s th loc) (Statements.simulations ()))
+  let (starts, blocks) =
+    List.fold_left (
+      fun (ls, lb) id ->
+        let (s, b) = case_stmt id th loc in
+        (s :: ls) , (b :: lb)
+    ) ([],[]) ( Statements.simulations() ) 
+  in
+  starts, List.flatten blocks
 
 let switch_stmt choose th loc = 
-  let ch_call = case_choose choose th loc in
-  let f_calls = all_case_init th loc in
-  let s_calls = all_case_stmt th loc in
-  let switch_b = Cil.mkBlock (ch_call @ f_calls @ s_calls) in
-  let access = Vars.c_access (-1) ~th:(Some th) loc in
+  let schoose, ch_call = case_choose choose th loc in
+  let sfuncs , f_calls = all_case_init th loc in
+  let sstmts , s_calls = all_case_stmt th loc in
+  let switch_b      = Cil.mkBlock (ch_call @ f_calls @ s_calls) in
+  let switch_starts = schoose :: sfuncs @ sstmts in
+  let access = Vars.c_access (-1) ~th:(Some (Cil.evar th)) loc in
   let pct_th = Cil.new_exp ~loc:loc (Lval (access)) in
-  Cil.mkStmt( Switch(pct_th, switch_b, switch_b.bstmts, loc))
+  Cil.mkStmt( Switch(pct_th, switch_b, switch_starts, loc))
 
 let random_thread_stmt th loc =
   let lv_th = Some( (Var th), NoOffset ) in

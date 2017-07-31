@@ -88,18 +88,18 @@ class visitor = object(_)
   inherit Visitor.frama_c_inplace
 
   method! vfile _ =
-    Options.Self.feedback "Called" ;
-    Vars.initialize_pc () ;
     let th_locals = Query.sload collect_thread_locals () in
-    List.iter (fun (v,ii) -> Vars.add_thread_local v ii) th_locals ;
     let globals   = collect_globals () in
-    List.iter (fun (v,ii) -> Vars.add_global v ii) globals ;
     let locals = Query.sload collect_locals () in
-    List.iter (fun (f,v ) -> Vars.add_local f v) locals ;
     let functions = Query.sload collect_functions () in
+    let statements = Query.sload collect_stmts () in
+
+    Vars.initialize_pc () ;
+    List.iter (fun (v,ii) -> Vars.add_thread_local v ii) th_locals ;
+    List.iter (fun (v,ii) -> Vars.add_global v ii) globals ;
+    List.iter (fun (f,v ) -> Vars.add_local f v) locals ;
     List.iter (fun f -> Vars.add_function f) functions ;
     List.iter (fun f -> Functions.add f) functions ;
-    let statements = Query.sload collect_stmts () in
     List.iter (fun (kf, s) -> Statements.add_stmt kf s) statements ;
 
     let loc = Cil.CurrentLoc.get() in
@@ -108,10 +108,13 @@ class visitor = object(_)
     let iglobals = Functions.init_simulations loc in
     let ilv = Interleavings.get_function loc in
     let choose = Interleavings.get_choose loc in
-
+    
     let modify f =
+      let vannots  = [GAnnot ((Axioms.get loc), loc)] in
+      
       f.globals <-
         vglobals
+        @ vannots
         @ f.globals
         @ iglobals
         @ fglobals
@@ -146,7 +149,7 @@ class visitor = object(_)
     Cil.DoChildrenPost modify
 
   method! vterm_lval _ =
-    let loc = Cil.CurrentLoc.get() in
+    let loc = Cil.CurrentLoc.get () in
     let modify (host, offset) =
       match host with
       | TVar(lv) ->
@@ -174,4 +177,5 @@ let make () =
   ignore (Query.simulation create_from ()) ;
   Query.simulation Ast.mark_as_changed () ;
   Query.simulation Ast.compute () ;
+  Query.simulation File.reorder_ast () ;
   prj

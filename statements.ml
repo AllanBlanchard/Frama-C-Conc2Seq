@@ -22,17 +22,17 @@ let finalize def body loc =
   Cfg.cfgFun def
 
 let affect_pc_th th exp loc = 
-  let access = Vars.c_access (-1) ~th:(Some th) loc in
+  let access = Vars.c_access (-1) ~th:(Some (Cil.evar th)) loc in
   Cil.mkStmt(Instr(Set(access, (Cil.new_exp loc exp), loc)))
 
 let affect_pc_th_int th value loc =
   let const  = Const(CInt64(Integer.of_int value, IInt, None)) in
-  let access = Vars.c_access (-1) ~th:(Some th) loc in
+  let access = Vars.c_access (-1) ~th:(Some (Cil.evar th)) loc in
   Cil.mkStmt(Instr(Set(access, (Cil.new_exp loc const), loc)))
 
 let affect_from fct th value loc =
   let const  = Const(CInt64(Integer.of_int value, IInt, None)) in
-  let access = Vars.c_access fct.vid ~th:(Some th) loc in
+  let access = Vars.c_access fct.vid ~th:(Some (Cil.evar th)) loc in
   Cil.mkStmt(Instr(Set(access, (Cil.new_exp loc const), loc)))
 
 let rec skip_skip stmt =
@@ -58,7 +58,7 @@ let set transformer affect s =
 let call transformer affect fct le next th loc =
   let load v e =
     let ne = Visitor.visitFramacExpr transformer e in
-    let nv = Vars.c_access v.vid ~th:(Some th) loc in
+    let nv = Vars.c_access v.vid ~th:(Some (Cil.evar th)) loc in
     Cil.mkStmt(Instr(Set(nv, ne, loc)))
   in
   let loads = List.map2 load (Functions.formals fct.vid) le in
@@ -112,7 +112,7 @@ let return kf stmt th =
   (* does not depend on the global state, so it is OK there.                *) 
   let fv = Globals.Functions.get_vi kf in
   let loc  = Cil_datatype.Stmt.loc stmt in
-  let from = Lval(Vars.c_access fv.vid ~th:(Some th) loc) in
+  let from = Lval(Vars.c_access fv.vid ~th:(Some (Cil.evar th)) loc) in
   [affect_pc_th th from loc]
 
 let cond transformer affect s loc =
