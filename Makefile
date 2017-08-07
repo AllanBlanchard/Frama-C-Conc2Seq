@@ -18,7 +18,8 @@ PLUGIN_CMO = \
 	statements\
 	interleavings\
 	simfuncs_spec\
-	logic_transformer\
+	fun_preds\
+	lemmas\
 	simulation\
 	register
 #PLUGIN_GUI_CMO = cfg_gui

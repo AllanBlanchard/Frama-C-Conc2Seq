@@ -8,16 +8,28 @@ class empty_project prj = object(_)
       let kf = Query.sload Globals.Functions.get vi in
       Query.sload Atomic_spec.atomic_fct kf
     in
-    
+    let remove _ = [] in
     match g with
     | GVar(vi, _, _) | GVarDecl(vi, _) when Thread_local.is_thread_local vi ->
-      let modify _ = [] in Cil.DoChildrenPost modify
+      Cil.DoChildrenPost remove
     | GFun(f, _) when not (atomic_fct f.svar) ->
-      let modify _ = [] in Cil.DoChildrenPost modify
+      Cil.DoChildrenPost remove
     | GFunDecl(_, vi, _) when not (atomic_fct vi) ->
-      let modify _ = [] in Cil.DoChildrenPost modify
+      Cil.DoChildrenPost remove
     | GAnnot(Dinvariant(_),_) ->
-      let modify _ = [] in Cil.DoChildrenPost modify
+      Cil.DoChildrenPost remove
+    | GAnnot(Dlemma(name, false, _, _, p, _, _),_)
+      when Thread_local.thlocal_predicate p ->
+      Options.Self.feedback "Removing %s" name ;
+      Cil.DoChildrenPost remove
+    | GAnnot(Dfun_or_pred(li,_), _) when Thread_local.thlocal_logic_info li ->
+      Cil.DoChildrenPost remove
+(*
+    | GAnnot(Daxiomatic(name, list, _, _), _)
+        when List.exists Thread_local.
+      ->
+      Cil.DoChildrenPost remove
+*)
     | _ ->
       Cil.JustCopy
 end
@@ -50,6 +62,33 @@ let collect_invariants () =
   in
   Annotations.fold_global collect []
 
+let collect_axioms () =
+  let collect _ ca l =
+    match ca with
+    | Daxiomatic(name, annots, _, _) -> (name, annots) :: l
+    | _ -> l
+  in
+  Annotations.fold_global collect []
+
+let collect_lemmas () =
+  let collect _ ca l =
+    match ca with
+    | Dlemma(name, false, lbls, _, p, _, _)
+      when Thread_local.thlocal_predicate p ->
+      (name, lbls,p) :: l
+    | _ -> l
+  in
+  Annotations.fold_global collect []
+
+let collect_lfunctions () =
+  let collect _ ca l =
+    match ca with
+    | Dfun_or_pred(li, _) when Thread_local.thlocal_logic_info li ->
+      li :: l
+    | _ -> l
+  in
+  Annotations.fold_global collect []
+  
 let collect_functions () =
   let collect kf l =
     match kf.fundec with
@@ -104,10 +143,12 @@ class visitor = object(_)
     let statements = Query.sload collect_stmts () in
 
     (* Collects specification elements *)
-    let user_invariant = Query.sload collect_invariants () in
-    (*let user_lemmas    = Query.sload collect_lemmas () in*)
-    (*let user_lfuncs    = Query.sload collect_lfunctions () in*)
-    
+    let _(*user_invariant*) = Query.sload collect_invariants () in
+    let user_lfuncs = Query.sload collect_lfunctions () in
+    let user_lemmas = Query.sload collect_lemmas () in
+    (*let user_axioms = Query.sload collect_axioms () in*)
+
+    (* Code generation *)
     Vars.initialize_pc () ;
     List.iter (fun (v,ii) -> Vars.add_thread_local v ii) th_locals ;
     List.iter (fun (v,ii) -> Vars.add_global v ii) globals ;
@@ -115,7 +156,13 @@ class visitor = object(_)
     List.iter (fun f -> Vars.add_function f) functions ;
     List.iter (fun f -> Functions.add f) functions ;
     List.iter (fun (kf, s) -> Statements.add_stmt kf s) statements ;
-    let _(*user_invariant*) = List.map Logic_transformer.process user_invariant in
+
+    (* Process existing specs *)
+    List.iter (fun li -> Fun_preds.register li) user_lfuncs ;
+    List.iter (fun (n,lbls,p)  -> Lemmas.register n lbls p) user_lemmas ;
+    (* let user_invariant = List.map Logic_transformer.process user_invariant in *)
+    
+    (* Add specs *)
     Interleavings.build_function (Cil.CurrentLoc.get()) ;
     Simfuncs_spec.add_th_parameter_validity () ;
     Simfuncs_spec.add_simulation_invariant () ;
@@ -129,10 +176,16 @@ class visitor = object(_)
       let ilv = Interleavings.get_function loc in
       let choose = Interleavings.get_choose loc in
       let vannots  = [GAnnot ((Simulation_axioms.get loc), loc)] in
-          
+      let lfuncs = Fun_preds.globals loc in
+      let (*lemmas*)_ = Lemmas.globals loc in
+      
       f.globals <-
         vglobals
         @ vannots
+        @ lfuncs
+        (*@ lemmas -> Something strange there, lemmas are automatically 
+                      added to the AST, once registered using Annotations.add_global
+        *)
         @ f.globals
         @ iglobals
         @ fglobals

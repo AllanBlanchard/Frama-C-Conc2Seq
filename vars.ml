@@ -44,9 +44,9 @@ let add_function func =
 let get_pc () = match !pc with None -> assert false | Some v -> v
 
 let ids () = 
-  let t = Vmap.fold (fun v _ l      -> v :: l) !thlocals [] in
-  let l = Vmap.fold (fun v _ l      -> v :: l) !locals [] in
-  let f = Vmap.fold (fun v _ l      -> v :: l) !fromvars [] in
+  let t = Vmap.fold (fun v _ l -> v :: l) !thlocals [] in
+  let l = Vmap.fold (fun v _ l -> v :: l) !locals [] in
+  let f = Vmap.fold (fun v _ l -> v :: l) !fromvars [] in
   -1 :: t @ l @ f
 
 
