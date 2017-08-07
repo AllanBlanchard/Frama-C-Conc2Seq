@@ -13,13 +13,13 @@ PLUGIN_CMO = \
 	vars\
 	vars_spec\
 	functions\
-	axioms\
+	simulation_axioms\
 	code_transformer\
 	statements\
 	interleavings\
 	simfuncs_spec\
+	logic_transformer\
 	simulation\
-	core\
 	register
 #PLUGIN_GUI_CMO = cfg_gui
 #PLUGIN_DEPENDENCIES+=Genassigns

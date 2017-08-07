@@ -42,6 +42,14 @@ let collect_locals () =
   in
   Globals.Functions.fold collect []
 
+let collect_invariants () =
+  let collect _ ca l =
+    match ca with
+    | Dinvariant(li,_) -> li :: l
+    | _ -> l
+  in
+  Annotations.fold_global collect []
+
 let collect_functions () =
   let collect kf l =
     match kf.fundec with
@@ -88,12 +96,18 @@ class visitor = object(_)
   inherit Visitor.frama_c_inplace
 
   method! vfile _ =
+    (* Collects code elements *)
     let th_locals = Query.sload collect_thread_locals () in
     let globals   = collect_globals () in
     let locals = Query.sload collect_locals () in
     let functions = Query.sload collect_functions () in
     let statements = Query.sload collect_stmts () in
 
+    (* Collects specification elements *)
+    let user_invariant = Query.sload collect_invariants () in
+    (*let user_lemmas    = Query.sload collect_lemmas () in*)
+    (*let user_lfuncs    = Query.sload collect_lfunctions () in*)
+    
     Vars.initialize_pc () ;
     List.iter (fun (v,ii) -> Vars.add_thread_local v ii) th_locals ;
     List.iter (fun (v,ii) -> Vars.add_global v ii) globals ;
@@ -101,6 +115,7 @@ class visitor = object(_)
     List.iter (fun f -> Vars.add_function f) functions ;
     List.iter (fun f -> Functions.add f) functions ;
     List.iter (fun (kf, s) -> Statements.add_stmt kf s) statements ;
+    let _(*user_invariant*) = List.map Logic_transformer.process user_invariant in
     Interleavings.build_function (Cil.CurrentLoc.get()) ;
     Simfuncs_spec.add_th_parameter_validity () ;
     Simfuncs_spec.add_simulation_invariant () ;
@@ -113,7 +128,7 @@ class visitor = object(_)
       let iglobals = Functions.init_simulations loc in
       let ilv = Interleavings.get_function loc in
       let choose = Interleavings.get_choose loc in
-      let vannots  = [GAnnot ((Axioms.get loc), loc)] in
+      let vannots  = [GAnnot ((Simulation_axioms.get loc), loc)] in
           
       f.globals <-
         vglobals
