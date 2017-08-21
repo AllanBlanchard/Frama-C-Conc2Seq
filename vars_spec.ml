@@ -6,21 +6,21 @@ let make_axiom loc id =
   let j   = Cil_const.make_logic_var_quant "j" Linteger in
   let lj  = tvar j in
   let lbl = LogicLabel (None, "L") in
-  let valid_th = Atomic_header.valid_thread_id lbl lj in
+  let valid_th = Atomic_header.valid_thread_id lj in
   let mem_loc  = pvalid ~loc (lbl, Vars.l_memloc id lj loc) in
   let tmp  = pforall([j], pimplies(valid_th, mem_loc)) in
   let impl = pimplies((Simulation_invariant.app loc lbl), tmp) in
   let name = (Vars.sname id) ^ "_is_valid" in
   Dlemma(name, true, [lbl], [], impl, [], loc)
     
-let make_range lbl loc id =
-  let max_th = Atomic_header.max_thread lbl in
+let make_range loc id =
+  let max_th = Atomic_header.max_thread () in
   let up_bound = term (TBinOp (MinusA, max_th, tinteger 1)) Linteger in
   let range = trange ~loc (Some (tinteger 0), Some up_bound) in
   Vars.l_memloc id range loc
 
-let make_ranges lbl loc = 
-  List.map (make_range lbl loc) (Vars.ids())
+let make_ranges loc = 
+  List.map (make_range loc) (Vars.ids())
 
 let gvar_range loc vi =
   let open Logic_const in
@@ -59,7 +59,7 @@ let gvars_ranges loc =
 
 let make_separation loc =
   let lbl = LogicLabel (None, "L") in
-  let sim_ranges = make_ranges lbl loc in
+  let sim_ranges = make_ranges loc in
   let glo_ranges = gvars_ranges loc in
   let p = pseparated ~loc (glo_ranges @ sim_ranges) in
   let impl = pimplies((Simulation_invariant.app loc lbl), p) in

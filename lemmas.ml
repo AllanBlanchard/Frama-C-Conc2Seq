@@ -3,12 +3,14 @@ open Cil_types
 let lemmas = ref []
 
 let register name labels predicate =
+  let open Logic_const in
   let th = Cil_const.make_logic_var_quant "th" Linteger in
   let loc = Cil.CurrentLoc.get() in
-  let visitor = Fun_preds.make_visitor (Logic_const.tvar th) loc in
+  let visitor = Fun_preds.make_visitor (tvar th) loc in
   let p = Visitor.visitFramacPredicate visitor predicate in
-  let predicate = Logic_const.pforall ([th], p) in
-  lemmas := (name, labels, predicate) :: !lemmas
+  let valid_th = Atomic_header.valid_thread_id (tvar th) in
+  let p = pforall ([th], pimplies (valid_th , p)) in
+  lemmas := (name, labels, p) :: !lemmas
 
   
 let globals loc =

@@ -5,13 +5,13 @@
 
 /*@
   axiomatic thread_variables_properties{
-  logic integer MAX_THREAD{L} reads \nothing;
+  logic integer MAX_THREAD reads \nothing;
 
-  axiom some_threads{L}: 0 < MAX_THREAD{L};
+  axiom some_threads: 0 < MAX_THREAD;
   }
 
-  predicate valid_thread_id{L}(integer th) =
-    0 <= th < MAX_THREAD{L};
+  predicate valid_thread_id(integer th) =
+    0 <= th < MAX_THREAD;
 */
 
 //@ ghost size_t world;

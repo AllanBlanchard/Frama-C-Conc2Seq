@@ -17,8 +17,9 @@ PLUGIN_CMO = \
 	code_transformer\
 	statements\
 	interleavings\
-	simfuncs_spec\
 	fun_preds\
+	user_invariant\
+	simfuncs_spec\
 	lemmas\
 	simulation\
 	register

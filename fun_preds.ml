@@ -46,7 +46,8 @@ let transform_body body th =
   let loc = Cil.CurrentLoc.get() in
   let visitor = new term_visitor (Project.current()) th loc in
   match body with
-  | LBnone         -> assert false
+  | LBnone ->
+    assert false
   | LBreads(terms) ->
     LBreads(List.map (Visitor.visitFramacIdTerm (visitor :> base_type)) terms)
   | LBterm(term) ->

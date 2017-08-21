@@ -137,36 +137,38 @@ class visitor = object(_)
   method! vfile _ =
     (* Collects code elements *)
     let th_locals = Query.sload collect_thread_locals () in
+    (* As global variables do not need a particular treatment, we collect them
+       in the *current* project. *)
     let globals   = collect_globals () in
     let locals = Query.sload collect_locals () in
     let functions = Query.sload collect_functions () in
     let statements = Query.sload collect_stmts () in
 
     (* Collects specification elements *)
-    let _(*user_invariant*) = Query.sload collect_invariants () in
+    let user_invariant = Query.sload collect_invariants () in
     let user_lfuncs = Query.sload collect_lfunctions () in
     let user_lemmas = Query.sload collect_lemmas () in
     (*let user_axioms = Query.sload collect_axioms () in*)
 
     (* Code generation *)
     Vars.initialize_pc () ;
-    List.iter (fun (v,ii) -> Vars.add_thread_local v ii) th_locals ;
-    List.iter (fun (v,ii) -> Vars.add_global v ii) globals ;
-    List.iter (fun (f,v ) -> Vars.add_local f v) locals ;
-    List.iter (fun f -> Vars.add_function f) functions ;
-    List.iter (fun f -> Functions.add f) functions ;
+    List.iter (fun (v, ii) -> Vars.add_thread_local v ii) th_locals ;
+    List.iter (fun (v, ii) -> Vars.add_global v ii) globals ;
+    List.iter (fun (f, v ) -> Vars.add_local f v) locals ;
+    List.iter (fun  f      -> Vars.add_function f) functions ;
+    List.iter (fun  f      -> Functions.add f) functions ;
     List.iter (fun (kf, s) -> Statements.add_stmt kf s) statements ;
 
     (* Process existing specs *)
     List.iter (fun li -> Fun_preds.register li) user_lfuncs ;
-    List.iter (fun (n,lbls,p)  -> Lemmas.register n lbls p) user_lemmas ;
-    (* let user_invariant = List.map Logic_transformer.process user_invariant in *)
+    List.iter (fun (n,lbls,p) -> Lemmas.register n lbls p) user_lemmas ;
+    List.iter (fun li -> User_invariant.register li) user_invariant ;
     
     (* Add specs *)
     Interleavings.build_function (Cil.CurrentLoc.get()) ;
     Simfuncs_spec.add_th_parameter_validity () ;
     Simfuncs_spec.add_simulation_invariant () ;
-    (*Simfuncs_spec.add_user_invariant user_invariant ;*)
+    Simfuncs_spec.add_user_invariant () ;
       
     let modify f =
       let loc = Cil.CurrentLoc.get() in
@@ -184,7 +186,7 @@ class visitor = object(_)
         @ vannots
         @ lfuncs
         (*@ lemmas -> Something strange there, lemmas are automatically 
-                      added to the AST, once registered using Annotations.add_global
+                      added to the AST once registered using Annotations.add_global
         *)
         @ f.globals
         @ iglobals
