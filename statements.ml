@@ -153,11 +153,9 @@ let after_block s =
 
 let at_block transformer affect s =
   assert (Atomic_spec.atomic_stmt s) ;
-  Options.Self.feedback "here";
   match s.skind with
   | Block(b) ->
     let fs = skip_skip (after_block s) in
-    Options.Self.feedback "there";
     let block = Visitor.visitFramacBlock transformer b in
     let ret = affect (skip_skip fs).sid in
     let b = { block with bstmts = (block.bstmts @ [ret]) } in
@@ -194,12 +192,12 @@ let return_loading kf stmt dum =
 
 let add_stmt kf stmt =
   (* The call to get_vi is NOT SAFE but the way it is implemented (Silicon) *)
-  (* does not depend on the global state, so it is OK there.                *) 
+  (* does not depend on the global state, so it is OK there.                *)
   let name = (Globals.Functions.get_vi kf).vname^"_"^(string_of_int stmt.sid) in
   let loc  = Cil_datatype.Stmt.loc stmt in
   let (def, th) = base_simulation name in
   let affect value = affect_pc_th_int th value loc in
-  let transformer = Code_transformer.visitor (Project.current()) th loc in 
+  let transformer = Code_transformer.visitor (Project.current()) th loc in
   let body = match stmt.skind with
     | Instr(Set(_)) | Instr(Local_init(_,AssignInit(_),_)) ->
       set transformer affect stmt

@@ -71,6 +71,15 @@ class visitor bhv_ref prj = object(me)
       let nl = List.map (me#pr_vexp) l in
       insert_ph <- not (Query.original atomic_call inst) ;
       Cil.ChangeTo([Call(Some(nlv), nf, nl, loc)])
+    | Call(None, efct, l, loc) ->
+      let nf = match efct.enode with
+        | Lval(Var(fct), NoOffset) ->
+          Cil.new_exp ~loc (Lval(Cil.var (me#pr_nvi fct)))
+        | _ ->
+          raise (Errors.BadConstruct "function pointers")
+      in
+      let nl = List.map (me#pr_vexp) l in
+      Cil.ChangeTo([Call(None, nf, nl, loc)])
     | Set(lv, e, loc) ->
       Cil.ChangeTo([Set( (replace lv), (me#pr_vexp e), loc)])
     | _ ->

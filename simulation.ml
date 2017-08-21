@@ -1,5 +1,7 @@
 open Cil_types
 
+let is_tl vi = Thread_local.is_thread_local vi
+
 class empty_project prj = object(_)
   inherit Visitor.frama_c_copy prj
 
@@ -10,7 +12,7 @@ class empty_project prj = object(_)
     in
     let remove _ = [] in
     match g with
-    | GVar(vi, _, _) | GVarDecl(vi, _) when Thread_local.is_thread_local vi ->
+    | GVar(vi, _, _) | GVarDecl(vi, _) when is_tl vi ->
       Cil.DoChildrenPost remove
     | GFun(f, _) when not (atomic_fct f.svar) ->
       Cil.DoChildrenPost remove
@@ -18,23 +20,12 @@ class empty_project prj = object(_)
       Cil.DoChildrenPost remove
     | GAnnot(Dinvariant(_),_) ->
       Cil.DoChildrenPost remove
-    | GAnnot(Dlemma(name, false, _, _, p, _, _),_)
-      when Thread_local.thlocal_predicate p ->
-      Options.Self.feedback "Removing %s" name ;
+    | GAnnot(ga, _) when Thread_local.thlocal_gannot ga ->
       Cil.DoChildrenPost remove
-    | GAnnot(Dfun_or_pred(li,_), _) when Thread_local.thlocal_logic_info li ->
-      Cil.DoChildrenPost remove
-(*
-    | GAnnot(Daxiomatic(name, list, _, _), _)
-        when List.exists Thread_local.
-      ->
-      Cil.DoChildrenPost remove
-*)
     | _ ->
       Cil.JustCopy
 end
 
-let is_tl vi = Thread_local.is_thread_local vi
 
 let collect_thread_locals () =
   let collect vi ii l = if is_tl vi then (vi,ii) :: l else l in
@@ -152,8 +143,8 @@ class visitor = object(_)
 
     (* Code generation *)
     Vars.initialize_pc () ;
-    List.iter (fun (v, ii) -> Vars.add_thread_local v ii) th_locals ;
     List.iter (fun (v, ii) -> Vars.add_global v ii) globals ;
+    List.iter (fun (v, ii) -> Vars.add_thread_local v ii) th_locals ;
     List.iter (fun (f, v ) -> Vars.add_local f v) locals ;
     List.iter (fun  f      -> Vars.add_function f) functions ;
     List.iter (fun  f      -> Functions.add f) functions ;

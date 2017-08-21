@@ -12,12 +12,12 @@ let run () =
   Query.add_sload orig_to_sl sl_prj ;
   
   if Options.Check.get() then
-    Query.sload Filecheck.check_ast "Checking" ;
+    Query.sload Filecheck.check_ast "Checking single load AST" ;
       
   try
     ignore( Simulation.make () ) ;
     if Options.Check.get() then
-      Query.simulation Filecheck.check_ast "Checking" ;
+      Query.simulation Filecheck.check_ast "Checking simulation AST" ;
   with
   | Errors.BadConstruct(s) ->
     Options.Self.error "%s are forbidden" s

@@ -56,3 +56,15 @@ let thlocal_term t =
     ignore (Visitor.visitFramacTerm (new th_detector) t) ;
     false
   with Shame -> true
+
+let rec thlocal_gannot ga =
+  match ga with
+  | Dfun_or_pred(li,_) | Dinvariant(li, _) ->
+    thlocal_logic_info li
+  | Dlemma(_,_,_,_, p, _,_) ->
+    thlocal_predicate p
+  | Daxiomatic(_, list, _, _) ->
+    List.exists thlocal_gannot list
+  | _ ->
+    Options.Self.error "Unsupported spec type" ;
+    assert false

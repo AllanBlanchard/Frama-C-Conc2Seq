@@ -56,9 +56,7 @@ let formals id =
 
 let init_simulations loc =
   List.map
-    (fun (id, vi) ->
-       let spec = Annotations.funspec (force_get_old id) in
-       GFunDecl(spec, vi, loc))
+    (fun (_, vi) -> GFunDecl(Cil.empty_funspec (), vi, loc))
     (Fmap.bindings !stack_init)
 
 let ids () =
