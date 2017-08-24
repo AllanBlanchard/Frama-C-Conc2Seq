@@ -20,7 +20,7 @@ let run () =
       Query.simulation Filecheck.check_ast "Checking simulation AST" ;
   with
   | Errors.BadConstruct(s) ->
-    Options.Self.error "%s are forbidden" s
+    Options.Self.error "%s are not supported" s
   | Errors.MissingAtomicFile(s) ->
     Options.Self.error "%s not found, atomic.h not included ?" s
       

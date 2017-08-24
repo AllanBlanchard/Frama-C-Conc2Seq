@@ -2,8 +2,7 @@ open Cil_types
 
 
 module LImap = Map.Make(struct type t = int let compare = compare end)
-let logic_infos = ref LImap.empty
-
+let logic_infos              = ref LImap.empty
 
 class base_type = Visitor.frama_c_copy
 class term_visitor prj th loc = object(_)
@@ -31,11 +30,10 @@ class term_visitor prj th loc = object(_)
       | TVar(lv) ->
         begin match lv.lv_origin with
           | None -> host, offset
-          | Some vi when Thread_local.is_thread_local vi ->
-            Vars.l_access vi.vid ~th:(Some th) ~no:offset loc
           | Some vi when vi.vglob ->
             Vars.l_access vi.vid ~th:None ~no:offset loc
-          | _ -> assert false
+          | Some vi ->
+            Vars.l_access vi.vid ~th:(Some th) ~no:offset loc
         end
       | _ -> host, offset
     in
@@ -47,7 +45,7 @@ let transform_body body th =
   let visitor = new term_visitor (Project.current()) th loc in
   match body with
   | LBnone ->
-    assert false
+    LBnone
   | LBreads(terms) ->
     LBreads(List.map (Visitor.visitFramacIdTerm (visitor :> base_type)) terms)
   | LBterm(term) ->

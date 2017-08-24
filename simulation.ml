@@ -2,6 +2,10 @@ open Cil_types
 
 let is_tl vi = Thread_local.is_thread_local vi
 
+let check () =
+  List.iter (fun id -> ignore(Functions.precondition id)) (Functions.ids())
+
+
 class empty_project prj = object(_)
   inherit Visitor.frama_c_copy prj
 
@@ -20,6 +24,10 @@ class empty_project prj = object(_)
       Cil.DoChildrenPost remove
     | GAnnot(Dinvariant(_),_) ->
       Cil.DoChildrenPost remove
+    | GAnnot(Daxiomatic(name,l,attr,loc),_)
+      when Thread_local.thlocal_gannot(Daxiomatic(name,l,attr,loc)) ->
+      raise (Errors.BadConstruct "Axiomatic block with terms\
+                                  involving thread-local variables")
     | GAnnot(ga, _) when Thread_local.thlocal_gannot ga ->
       Cil.DoChildrenPost remove
     | _ ->
@@ -53,6 +61,9 @@ let collect_invariants () =
   in
   Annotations.fold_global collect []
 
+(*
+  There is a lot of thing to decide before we can treat this.
+
 let collect_axioms () =
   let collect _ ca l =
     match ca with
@@ -60,6 +71,7 @@ let collect_axioms () =
     | _ -> l
   in
   Annotations.fold_global collect []
+*)
 
 let collect_lemmas () =
   let collect _ ca l =
@@ -135,6 +147,7 @@ class visitor = object(_)
     let functions = Query.sload collect_functions () in
     let statements = Query.sload collect_stmts () in
 
+    
     (* Collects specification elements *)
     let user_invariant = Query.sload collect_invariants () in
     let user_lfuncs = Query.sload collect_lfunctions () in
@@ -160,6 +173,7 @@ class visitor = object(_)
     Simfuncs_spec.add_th_parameter_validity () ;
     Simfuncs_spec.add_simulation_invariant () ;
     Simfuncs_spec.add_user_invariant () ;
+    Simfuncs_spec.add_prepost () ;
       
     let modify f =
       let loc = Cil.CurrentLoc.get() in
@@ -238,6 +252,7 @@ let make () =
   let create = File.create_project_from_visitor in
   let prj = Query.sload create "Simulation" empty in
   Query.add_simulation prj ;
+  check () ;
   ignore (Query.simulation create_from ()) ;
   Query.simulation Ast.mark_as_changed () ;
   Query.simulation Ast.compute () ;

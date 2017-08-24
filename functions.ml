@@ -14,6 +14,17 @@ let th_parameter kf =
 
 let in_old f p = Query.sload f p
 
+let force_get_old_kf id =
+  if Fmap.mem id !functions then
+    Fmap.find id !functions
+  else
+    assert false
+
+let force_get_kf id =
+  if Fmap.mem id !stack_init then
+    Globals.Functions.get (Fmap.find id !stack_init)
+  else
+    assert false
 
 let build_init func =
   let name = "init_formals_" ^ func.vname in
@@ -27,32 +38,24 @@ let build_init func =
 let add kf =
   let id = in_old find_id kf in
   functions := Fmap.add id kf !functions ;
+  let kf = force_get_old_kf id in
   let vi = in_old find_var kf in
   stack_init := Fmap.add id (build_init vi) !stack_init
 
-let force_get_old id =
-  if Fmap.mem id !functions then
-    Fmap.find id !functions
-  else
-    assert false
-
-let force_get id =
-  if Fmap.mem id !stack_init then
-    Globals.Functions.get (Fmap.find id !stack_init)
-  else
-    assert false
-
 let first_stmt id =
-  in_old Kernel_function.find_first_stmt (force_get_old id)
+  in_old Kernel_function.find_first_stmt (force_get_old_kf id)
+
+let return_stmt id =
+  in_old Kernel_function.find_return (force_get_old_kf id)
 
 let res_expression id =
-  let stmt = in_old Kernel_function.find_return (force_get_old id) in
+  let stmt = return_stmt id in
   match stmt.skind with
   | Return(Some(e), _) -> e
   | _                  -> assert false
 
 let formals id =
-  in_old Kernel_function.get_formals (force_get_old id)
+  in_old Kernel_function.get_formals (force_get_old_kf id)
 
 let init_simulations loc =
   List.map
@@ -70,18 +73,31 @@ let simulation id =
 
 let add_requires id p =
   let id_p = Logic_const.new_predicate p in
-  Annotations.add_requires Options.emitter (force_get id) [id_p]
+  Annotations.add_requires Options.emitter (force_get_kf id) [id_p]
   
 let add_requires_thread id p_from_th =
-  let lth = Cil.cvar_to_lvar(th_parameter (force_get id)) in
+  let lth = Cil.cvar_to_lvar(th_parameter (force_get_kf id)) in
   let th = Logic_const.tlogic_coerce (Logic_const.tvar lth) Linteger in
   add_requires id (p_from_th th)
 
 let add_ensures id p =
   let id_p = Logic_const.new_predicate p in
-  Annotations.add_ensures Options.emitter (force_get id) [Normal, id_p]
+  Annotations.add_ensures Options.emitter (force_get_kf id) [Normal, id_p]
     
 let add_ensures_thread id p_from_th =
-  let lth = Cil.cvar_to_lvar(th_parameter (force_get id)) in
+  let lth = Cil.cvar_to_lvar(th_parameter (force_get_kf id)) in
   let th = Logic_const.tlogic_coerce (Logic_const.tvar lth) Linteger in
   add_ensures id (p_from_th th)
+
+let precondition id =
+  let kf = force_get_old_kf id in
+  let folder _ ip l = (Logic_const.pred_of_id_pred ip) :: l in
+  let fold_requires () =
+    Annotations.fold_requires folder kf Cil.default_behavior_name []
+  in
+  Query.sload fold_requires ()
+
+let postcondition id =
+  let kf = force_get_old_kf id in
+  let folder _ (_, ip) l = (Logic_const.pred_of_id_pred ip) :: l in
+  Annotations.fold_ensures folder kf Cil.default_behavior_name []

@@ -58,6 +58,7 @@ let thlocal_term t =
   with Shame -> true
 
 let rec thlocal_gannot ga =
+  let msg_end = "are not supported, just keep them unchanged." in
   match ga with
   | Dfun_or_pred(li,_) | Dinvariant(li, _) ->
     thlocal_logic_info li
@@ -65,6 +66,17 @@ let rec thlocal_gannot ga =
     thlocal_predicate p
   | Daxiomatic(_, list, _, _) ->
     List.exists thlocal_gannot list
-  | _ ->
-    Options.Self.error "Unsupported spec type" ;
-    assert false
+  | Dtype(_) ->
+    false
+  | Dvolatile(_) ->
+    Options.Self.warning "Volatile annotations %s" msg_end ;
+    false
+  | Dtype_annot(_) ->
+    Options.Self.warning "Type invariant annotations %s" msg_end ;
+    false
+  | Dmodel_annot(_) ->
+    Options.Self.warning "Model fields annotations %s" msg_end ;
+    false
+  | Dcustom_annot(_) ->
+    Options.Self.warning "Custom annotations %s" msg_end ;
+    false
