@@ -13,7 +13,6 @@ let build () =
     i
   | Some i -> i
 
-
 let gannot = ref None
 
 let get loc =

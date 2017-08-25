@@ -23,12 +23,20 @@ let add_th_parameter_validity () =
   List.iter add_to_func (Functions.ids()) ;
   List.iter add_to_stmt (Statements.simulations())
 
+let add_invariant_in_simulations i =
+  List.iter (fun id -> func_add_lbl_invariant id i) (Functions.ids()) ;
+  List.iter (fun id -> stmt_add_lbl_invariant id i) (Statements.simulations());
+  Interleavings.add_invariant (i here)
+
+let add_program_counter_steps () =
+  List.iter Functions.add_pc_steps (Functions.ids()) ;
+  List.iter Statements.add_pc_steps (Statements.simulations())
+
 let add_simulation_invariant () =
   let loc = Cil_datatype.Location.unknown in
-  let p = Simulation_invariant.app loc in
-  List.iter (fun id -> func_add_lbl_invariant id p) (Functions.ids()) ;
-  List.iter (fun id -> stmt_add_lbl_invariant id p) (Statements.simulations()) ;
-  Interleavings.add_invariant (p here)
+  add_invariant_in_simulations (Simulation_invariant.app loc) ;
+  add_invariant_in_simulations (Program_counter.invariant) ;
+  add_program_counter_steps ()
 
 let add_user_invariant () =
   let add_invariant p =
@@ -42,7 +50,7 @@ let add_user_invariant () =
 let add_prepost_for id =
   let loc = Cil_datatype.Location.unknown in
   let adapt p th =
-    let name = "Original function precondition" :: p.pred_name in
+    let name = "Original function contract" :: p.pred_name in
     let visitor = Fun_preds.make_visitor th loc in
     { (Visitor.visitFramacPredicate visitor p) with pred_name = name }
   in

@@ -51,7 +51,8 @@ let gvars_ranges loc =
       match vi.vtype with
       | TPtr(_) ->
         Options.Self.warning
-          "%a is a pointer, separation with simulation is not currently supported"
+          "%a is a pointer, separation with simulation is not currently\
+           supported"
           Cil_datatype.Varinfo.pretty vi
       | _ -> assert false
     ) unusable ;
@@ -75,4 +76,3 @@ let get loc =
   let sepa = make_separation loc in
   add_vars_to_simulation_inv loc ;
   sepa :: vars_axioms
-    

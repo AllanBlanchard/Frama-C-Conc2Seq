@@ -9,6 +9,8 @@ val init_simulations : location -> global list
 val ids : unit -> int list
 val simulation : int -> varinfo
 
+val add_pc_steps : int -> unit
+
 val precondition : int -> predicate list
 val postcondition : int -> predicate list
 

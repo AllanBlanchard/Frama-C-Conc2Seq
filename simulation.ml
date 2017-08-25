@@ -182,12 +182,14 @@ class visitor = object(_)
       let iglobals = Functions.init_simulations loc in
       let ilv = Interleavings.get_function loc in
       let choose = Interleavings.get_choose loc in
+      let pcpreds = Program_counter.globals loc in
       let vannots  = [GAnnot ((Simulation_axioms.get loc), loc)] in
       let lfuncs = Fun_preds.globals loc in
       let (*lemmas*)_ = Lemmas.globals loc in
       
       f.globals <-
         vglobals
+        @ pcpreds
         @ vannots
         @ lfuncs
         (*@ lemmas -> Something strange there, lemmas are automatically 

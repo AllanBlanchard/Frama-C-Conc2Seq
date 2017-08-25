@@ -8,15 +8,16 @@ PLUGIN_CMO = \
 	atomic_spec\
 	atomic_header\
 	thread_local\
-	simulation_invariant\
 	single_load\
 	vars\
-	vars_spec\
 	functions\
-	simulation_axioms\
 	code_transformer\
 	statements\
 	interleavings\
+	program_counter\
+	simulation_invariant\
+	vars_spec\
+	simulation_axioms\
 	fun_preds\
 	user_invariant\
 	simfuncs_spec\

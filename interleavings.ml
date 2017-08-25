@@ -121,10 +121,8 @@ let add_invariant p =
   let loop = force_get_loop () in
   let choose = force_get_choose () in
   let loop_inv = new_code_annotation (AInvariant([], true, p)) in
-  (*let loop_false = new_code_annotation (AInvariant([], true, pfalse)) in*)
   
   add_requires Options.emitter kf [new_predicate p] ;
   add_code_annot Options.emitter ~kf loop loop_inv ;
-  (*add_code_annot Options.emitter ~kf loop loop_false ;*)
   add_requires Options.emitter choose [new_predicate p] ;
   add_ensures Options.emitter choose ([Normal, new_predicate p])
