@@ -3,6 +3,8 @@ open Cil_types
 let invariant = ref []
 
 let register li  =
+  let name = li.l_var_info.lv_name in
+  Options.Self.feedback "Registering user invariant: %s" name ;
   let p = match li.l_body with LBpred(p) -> p | _ -> assert false in
   let th = Cil_const.make_logic_var_quant "th" Linteger in
   let loc = Cil.CurrentLoc.get() in
@@ -15,6 +17,6 @@ let register li  =
     else
       Visitor.visitFramacPredicate visitor p
   in
-  invariant := { new_p with pred_name = [ li.l_var_info.lv_name] } :: !invariant
+  invariant := { new_p with pred_name = [ name ] } :: !invariant
 
 let predicates () = !invariant

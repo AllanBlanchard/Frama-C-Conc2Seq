@@ -54,6 +54,9 @@ let res_expression id =
   | Return(Some(e), _) -> e
   | _                  -> assert false
 
+let name id =
+  in_old Kernel_function.get_name (force_get_old_kf id)
+
 let formals id =
   in_old Kernel_function.get_formals (force_get_old_kf id)
 
@@ -100,8 +103,12 @@ let precondition id =
 let postcondition id =
   let kf = force_get_old_kf id in
   let folder _ (_, ip) l = (Logic_const.pred_of_id_pred ip) :: l in
-  Annotations.fold_ensures folder kf Cil.default_behavior_name []
+  let fold_ensures () =
+    Annotations.fold_ensures folder kf Cil.default_behavior_name []
+  in
+  Query.sload fold_ensures ()
 
+(* refacto *)
 let add_pc_steps id =
   let open Logic_const in
   let lth = Cil.cvar_to_lvar(th_parameter (force_get_kf id)) in
@@ -109,7 +116,7 @@ let add_pc_steps id =
   let loc = Cil_datatype.Location.unknown in
   let pct = Vars.l_access (-1) ~th:(Some th) loc in
   let before  = prel (Req, (term (TLval pct) Linteger), tinteger (-id)) in
-  let stmt_id = (return_stmt id).sid in
+  let stmt_id = (first_stmt id).sid in
   let after   = prel (Req, (term (TLval pct) Linteger), tinteger stmt_id) in
   add_requires id before ;
   add_ensures  id after

@@ -49,9 +49,10 @@ let atomic_call instr =
     | Local_init(_, ConsInit(fct, _, _), _) -> fct
     | _ -> assert false
   in
-  atomic_fct (Query.sload Globals.Functions.get fct)
+  atomic_fct (Globals.Functions.get fct)
 
 let atomic_call_stmt s =
+  Options.Self.feedback "Reached TEST" ;
   match s.skind with
   | Instr(i) -> atomic_call i
   | _ -> assert false

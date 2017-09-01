@@ -22,28 +22,28 @@ class visitor bhv_ref prj = object(me)
   method private pr_vexp  e  = Visitor.visitFramacExpr (me :> copy) e
   method private pr_vlval lv = Visitor.visitFramacLval (me :> copy) lv
   method private pr_voff  o  = Visitor.visitFramacOffset (me :> copy) o
-      
+
   method private pr_nvi vi = Cil.memo_varinfo me#behavior vi
-      
+
   val mutable insert_ph = false
 
   method! vfile _ =
     bhv_ref := Some me#behavior ;
     Cil.DoChildren
-  
+
   method! vfunc _ =
     Cil.DoChildrenPost
       (fun f -> Cfg.clearCFGinfo ~clear_id:false f ; Cfg.cfgFun f ; f)
 
   method! vstmt_aux s =
     let open Atomic_spec in
-    if insert_ph then begin
-      insert_ph <- false ; me#queueInstr [Cil.dummyInstr]
-    end ;
     match s.skind with
     | Block(_) when Query.original atomic_stmt s ->
       Cil.JustCopy
-    | _ -> Cil.DoChildren
+    | UnspecifiedSequence(_) ->
+      raise (Errors.BadConstruct "Unspecified sequences")
+    | _ ->
+      Cil.DoChildren
 
   method! vinst inst =
     let open Atomic_spec in
@@ -52,32 +52,30 @@ class visitor bhv_ref prj = object(me)
       | Var(vi), o -> Var(me#pr_nvi vi), me#pr_voff o
       | Mem(e), o  -> Mem(me#pr_vexp e), me#pr_voff o
     in
-    
+    let add_dummy i =
+      if not (Query.original atomic_call inst)
+      then [ i ; Cil.dummyInstr ] else [i]
+    in
+    let update_fnode efct loc =
+      match efct.enode with
+      | Lval(Var(fct), NoOffset) ->
+        Cil.new_exp ~loc (Lval(Cil.var (me#pr_nvi fct)))
+      | _ ->
+        raise (Errors.BadConstruct "Function pointers")
+    in
     match inst with
     | Local_init(vi, ConsInit(fvi, l, k), loc) ->
-      insert_ph <- not (Query.original atomic_call inst) ;
       let nvi  = me#pr_nvi vi in
       let nfvi = me#pr_nvi fvi in
       let nl   = List.map (me#pr_vexp) l in
-      Cil.ChangeTo([Local_init(nvi, ConsInit(nfvi, nl, k), loc)])
+      Cil.ChangeTo(add_dummy (Local_init(nvi, ConsInit(nfvi, nl, k), loc)))
     | Call(Some(lv), efct, l, loc) ->
       let nlv = replace lv in
-      let nf = match efct.enode with
-        | Lval(Var(fct), NoOffset) ->
-          Cil.new_exp ~loc (Lval(Cil.var (me#pr_nvi fct)))
-        | _ ->
-          raise (Errors.BadConstruct "function pointers")
-      in
+      let nf = update_fnode efct loc in
       let nl = List.map (me#pr_vexp) l in
-      insert_ph <- not (Query.original atomic_call inst) ;
-      Cil.ChangeTo([Call(Some(nlv), nf, nl, loc)])
+      Cil.ChangeTo(add_dummy (Call(Some(nlv), nf, nl, loc)))
     | Call(None, efct, l, loc) ->
-      let nf = match efct.enode with
-        | Lval(Var(fct), NoOffset) ->
-          Cil.new_exp ~loc (Lval(Cil.var (me#pr_nvi fct)))
-        | _ ->
-          raise (Errors.BadConstruct "function pointers")
-      in
+      let nf = update_fnode efct loc in
       let nl = List.map (me#pr_vexp) l in
       Cil.ChangeTo([Call(None, nf, nl, loc)])
     | Set(lv, e, loc) ->
@@ -101,8 +99,8 @@ class visitor bhv_ref prj = object(me)
   method! vlval _ =
     let loc = Cil.CurrentLoc.get() in
     let nf = match me#current_func with
-    | Some(f) -> Cil.memo_fundec me#behavior f
-    | None -> assert false
+      | Some(f) -> Cil.memo_fundec me#behavior f
+      | None -> assert false
     in
 
     (* Here the lval must be a load in a function *)

@@ -2,10 +2,6 @@ open Cil_types
 
 let is_tl vi = Thread_local.is_thread_local vi
 
-let check () =
-  List.iter (fun id -> ignore(Functions.precondition id)) (Functions.ids())
-
-
 class empty_project prj = object(_)
   inherit Visitor.frama_c_copy prj
 
@@ -254,7 +250,6 @@ let make () =
   let create = File.create_project_from_visitor in
   let prj = Query.sload create "Simulation" empty in
   Query.add_simulation prj ;
-  check () ;
   ignore (Query.simulation create_from ()) ;
   Query.simulation Ast.mark_as_changed () ;
   Query.simulation Ast.compute () ;

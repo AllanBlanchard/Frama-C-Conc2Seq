@@ -13,6 +13,7 @@ let base_simulation name =
   (def, th)
 
 let finalize def body loc =
+  Options.Self.feedback "Finalizing" ;
   def.sbody   <- { body with blocals = body.blocals @ def.sbody.blocals };
   def.slocals <- def.sbody.blocals ;
   let new_kf = { fundec = Definition(def, loc); spec = def.sspec } in
@@ -44,6 +45,9 @@ let rec skip_skip stmt =
   | _ -> stmt
 
 let set transformer affect s =
+  Options.Self.debug "Assignement: (%d) - %a"
+    s.sid
+    Cil_datatype.Stmt.pretty s ;
   let next = (skip_skip (List.hd s.succs)).sid in
   let ret = affect next in
   let s = match s.skind with
@@ -55,7 +59,13 @@ let set transformer affect s =
   let nstmt = Visitor.visitFramacStmt transformer s in
   [ nstmt ; ret ], [ next ]
 
-let call transformer affect fct le next th loc =
+type return_site = Ret of (int * bool * stmt)
+                 | LoadRet of (int * lval * stmt)
+
+let call_callee = ref Smap.empty
+let ret_callee = ref Smap.empty
+
+let call transformer affect fct le next th loc sid =
   let load v e =
     let ne = Visitor.visitFramacExpr transformer e in
     let nv = Vars.c_access v.vid ~th:(Some (Cil.evar th)) loc in
@@ -66,9 +76,13 @@ let call transformer affect fct le next th loc =
   let from_stmt = affect_from fct th next loc in
   let fst_kf  = Functions.first_stmt fct.vid in
   let pc_stmt = affect fst_kf.sid in
+  call_callee := Smap.add sid (fct.vid , pc_stmt) !call_callee ;
   loads @ [from_stmt ; pc_stmt ]
 
-let call_ret transformer affect s th =
+let call_ret transformer affect s th sid =
+  Options.Self.debug "Non-atomic function call (with ret): (%d) - %a"
+    s.sid
+    Cil_datatype.Stmt.pretty s ;
   let dummy = List.hd s.succs in
   let next_call = dummy.sid in
   let fct, l, loc = match s.skind with
@@ -81,9 +95,12 @@ let call_ret transformer affect s th =
       fct, l, loc
     | _ -> assert false
   in
-  dummy, call transformer affect fct l next_call th loc, [next_call]
+  dummy, call transformer affect fct l next_call th loc sid, [next_call]
 
 let atomic_call transformer affect s =
+  Options.Self.debug "Atomic function call: (%d) - %a"
+    s.sid
+    Cil_datatype.Stmt.pretty s ;
   let s = match s.skind with
     | Instr(Call(_)) -> s
     | Instr(Local_init(vi, ConsInit(fct, l, _), loc)) ->
@@ -96,7 +113,10 @@ let atomic_call transformer affect s =
   let ret = affect next in
   [ stmt ; ret ], [ next ]
 
-let call_void transformer affect s th =
+let call_void transformer affect s th sid =
+  Options.Self.debug "Non-atomic function call (void): (%d) - %a"
+    s.sid
+    Cil_datatype.Stmt.pretty s ;
   let next_call = (skip_skip (List.hd s.succs)).sid in
   let fct, l, loc = match s.skind with
     | Instr(Call(None, e, l ,loc)) ->
@@ -106,17 +126,29 @@ let call_void transformer affect s th =
       end
     | _ -> assert false
   in
-  call transformer affect fct l next_call th loc, [ next_call ]
+  call transformer affect fct l next_call th loc sid, [ next_call ]
 
 let return kf stmt th =
+  Options.Self.debug "Return: (%d) - %a"
+    stmt.sid
+    Cil_datatype.Stmt.pretty stmt ;
   (* The call to get_vi is NOT SAFE but the way it is implemented (Silicon) *)
   (* does not depend on the global state, so it is OK there.                *) 
   let fv = Globals.Functions.get_vi kf in
   let loc  = Cil_datatype.Stmt.loc stmt in
   let from = Lval(Vars.c_access fv.vid ~th:(Some (Cil.evar th)) loc) in
-  [affect_pc_th th from loc], []
+  let affect = affect_pc_th th from loc in
+  let ret_value = match fv.vtype with
+    | TFun(TVoid(_), _, _, _) -> false
+    | _ -> true
+  in
+  ret_callee := Smap.add stmt.sid (Ret(fv.vid, ret_value, affect)) !ret_callee ;
+  [affect], []
 
 let cond transformer affect s loc =
+  Options.Self.debug "Conditional: (%d) - %a"
+    s.sid
+    Cil_datatype.Stmt.pretty s ;
   match s.skind with
   | If(e,_,_,_) ->
     let ne = Visitor.visitFramacExpr transformer e in
@@ -127,6 +159,9 @@ let cond transformer affect s loc =
   | _ -> assert false
 
 let switch transformer affect s loc =
+  Options.Self.debug "Switch: (%d) - %a"
+    s.sid
+    Cil_datatype.Stmt.pretty s ;
   match s.skind with
   | Switch(e,_,_,_) ->
     let ne = Visitor.visitFramacExpr transformer e in
@@ -153,6 +188,9 @@ let after_block s =
   Query.sload after_block_aux s
 
 let at_block transformer affect s =
+  Options.Self.debug "Atomic block: (%d) - %a"
+    s.sid
+    Cil_datatype.Stmt.pretty s ;
   assert (Atomic_spec.atomic_stmt s) ;
   match s.skind with
   | Block(b) ->
@@ -165,7 +203,10 @@ let at_block transformer affect s =
   | _ -> assert false
 
 let return_loading kf stmt dum =
-  let ret, fct, loc = match stmt.skind with
+  Options.Self.debug "Return loading: (%d) - %a"
+    stmt.sid
+    Cil_datatype.Stmt.pretty stmt ;
+  let old_ret, fct, loc = match stmt.skind with
     | Instr(Call(Some(var), e, _, loc)) ->
       begin match e.enode with
         | Lval(Var(fct), NoOffset) -> var, fct, loc
@@ -182,7 +223,7 @@ let return_loading kf stmt dum =
 
   let ret_exp = Functions.res_expression fct.vid in
   let transformer = Code_transformer.visitor (Project.current()) th loc in
-  let ret   = Visitor.visitFramacLval transformer ret in
+  let ret   = Visitor.visitFramacLval transformer old_ret in
   let value = Visitor.visitFramacExpr transformer ret_exp in
   let create_return = Cil.mkStmt(Instr(Set(ret,value,loc))) in
   let next = (skip_skip (List.hd dum.succs)).sid in
@@ -191,6 +232,7 @@ let return_loading kf stmt dum =
   let block = Cil.mkBlock [create_return ; affect ; ret_stmt] in
   finalize def block loc ;
   statements := Smap.add dum.sid (def, [next]) !statements ;
+  ret_callee := Smap.add dum.sid (LoadRet(fct.vid, old_ret, ret_stmt)) !ret_callee ;
   ()
 
 let add_stmt kf stmt =
@@ -203,14 +245,18 @@ let add_stmt kf stmt =
   let transformer = Code_transformer.visitor (Project.current()) th loc in
   let body, next = match stmt.skind with
     | Instr(Set(_)) | Instr(Local_init(_,AssignInit(_),_)) ->
+      Options.Self.feedback "Reached 1" ;
       set transformer affect stmt
     | Instr(Call(Some(_),_,_,_)) | Instr(Local_init(_,ConsInit(_),_))
-      when not(Atomic_spec.atomic_call_stmt stmt) ->
-      let dum, result, next = call_ret transformer affect stmt th in
+      when not(Query.sload Atomic_spec.atomic_call_stmt stmt) ->
+      Options.Self.feedback "Reached 2" ;
+      let dum, result, next = call_ret transformer affect stmt th stmt.sid in
       return_loading kf stmt dum ;
       result, next
-    | Instr(Call(None,_,_,_)) when not(Atomic_spec.atomic_call_stmt stmt) ->
-      call_void transformer affect stmt th
+    | Instr(Call(None,_,_,_))
+      when not(Query.sload Atomic_spec.atomic_call_stmt stmt) ->
+      Options.Self.feedback "Reached 3" ;
+      call_void transformer affect stmt th stmt.sid
     | Instr(Call(_,_,_,_)) | Instr(Local_init(_,ConsInit(_),_)) ->
       atomic_call transformer affect stmt
     | Return(_) ->
@@ -222,8 +268,12 @@ let add_stmt kf stmt =
     | Block(_)  ->
       at_block transformer affect stmt
     | Loop(_,b,_,_,_) when b.bstmts = [] ->
+      Options.Self.debug "Loop: (%d) - %a" stmt.sid
+        Cil_datatype.Stmt.pretty stmt ;
       [affect stmt.sid], [stmt.sid]
     | Loop(_,b,_,_,_) ->
+      Options.Self.debug "Loop: (%d) - %a" stmt.sid
+        Cil_datatype.Stmt.pretty stmt ;
       let next = (skip_skip (List.hd b.bstmts)).sid in
       [affect next], [next]
     | _ ->
@@ -296,3 +346,52 @@ let add_pc_steps id =
     in
     let after = pors (List.map gen_equality l) in
     add_ensures id after
+
+let make_assert id stmt p_from_th =
+  let kf = (force_get_kf id) in
+  let lth = Cil.cvar_to_lvar(th_parameter kf) in
+  let th = Logic_const.tlogic_coerce (Logic_const.tvar lth) Linteger in
+  Annotations.add_assert Options.emitter ~kf stmt (p_from_th th)
+
+let process_call_site make_visitor id (fid, stmt) =
+  let pre = Functions.precondition fid in
+  let adapt p th =
+    let name = ((Functions.name fid) ^ " requires") :: p.pred_name in
+    let visitor = make_visitor th None in
+    { (Visitor.visitFramacPredicate visitor p) with pred_name = name }
+  in
+  List.iter (make_assert id stmt) (List.map adapt pre)
+
+let process_call_sites make_visitor =
+  Smap.iter (process_call_site make_visitor) !call_callee
+
+let process_ret_site make_visitor id site =
+  let fid, res, stmt = match site with
+    | LoadRet(i,r,s) ->
+      let r = Logic_utils.lval_to_term_lval ~cast:true r in
+      i, (Some r), s
+    | Ret(i, rvalue, s) ->
+      if rvalue then
+        let r = match (Functions.res_expression i).enode with
+          | Lval(lv) -> lv
+          | _ -> assert false
+        in
+        let r = Logic_utils.lval_to_term_lval ~cast:true r in
+        i, (Some r), s
+      else
+        i, None, s
+  in
+  let post = Functions.postcondition fid in
+  let adapt p th =
+    let name = ((Functions.name fid) ^ " ensures") :: p.pred_name in
+    let visitor = make_visitor th res in
+    { (Visitor.visitFramacPredicate visitor p) with pred_name = name }
+  in
+  List.iter (make_assert id stmt) (List.map adapt post)
+
+let process_ret_sites make_visitor =
+  Smap.iter (process_ret_site make_visitor) !ret_callee
+
+let process_callret_specs make_visitor =
+  process_call_sites make_visitor ;
+  process_ret_sites make_visitor

@@ -6,6 +6,7 @@ val simulation: int -> fundec
 val simulations: unit -> int list
 
 val add_pc_steps: int -> unit
+val process_callret_specs: (term -> term_lval option -> Visitor.frama_c_copy) -> unit
 
 val add_requires : int -> predicate -> unit
 val add_requires_thread : int-> (term -> predicate) -> unit

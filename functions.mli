@@ -5,6 +5,7 @@ val first_stmt : int -> stmt
 val return_stmt : int -> stmt
 val res_expression : int -> exp
 val formals : int -> varinfo list
+val name : int -> string
 val init_simulations : location -> global list
 val ids : unit -> int list
 val simulation : int -> varinfo

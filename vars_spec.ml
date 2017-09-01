@@ -3,14 +3,16 @@ open Logic_const
 
 
 let make_axiom loc id =
+  let vname = Vars.sname id in
+  Options.Self.feedback "Building validity axiom for %s" vname ;
   let j   = Cil_const.make_logic_var_quant "j" Linteger in
   let lj  = tvar j in
-  let lbl = LogicLabel (None, "L") in
+  let lbl = FormalLabel("L") in
   let valid_th = Atomic_header.valid_thread_id lj in
   let mem_loc  = pvalid ~loc (lbl, Vars.l_memloc id lj loc) in
   let tmp  = pforall([j], pimplies(valid_th, mem_loc)) in
   let impl = pimplies((Simulation_invariant.app loc lbl), tmp) in
-  let name = (Vars.sname id) ^ "_is_valid" in
+  let name = vname ^ "_is_valid" in
   Dlemma(name, true, [lbl], [], impl, [], loc)
     
 let make_range loc id =
@@ -36,7 +38,9 @@ let gvar_range loc vi =
     let lv = Cil.cvar_to_lvar vi in
     let tlval = TVar(lv), TIndex(range, TNoOffset) in
     mk_logic_AddrOf ~loc tlval (Ctype (TPtr(typ,[])))
-  | _ -> assert false
+  | _ ->
+    Options.Self.failure "attempt to create a range for an unsupported type" ;
+    assert false
     
 let gvars_ranges loc =
   let (usable, unusable) = List.partition
@@ -52,14 +56,18 @@ let gvars_ranges loc =
       | TPtr(_) ->
         Options.Self.warning
           "%a is a pointer, separation with simulation is not currently\
-           supported"
+           supported (ignored)"
           Cil_datatype.Varinfo.pretty vi
-      | _ -> assert false
+      | _ ->
+        Options.Self.failure "attempt to create a range for an\
+                              unsupported type" ;
+        assert false
     ) unusable ;
   List.map (gvar_range loc) usable
 
 let make_separation loc =
-  let lbl = LogicLabel (None, "L") in
+  Options.Self.feedback "Building axiom about simulating variables separation" ;
+  let lbl = FormalLabel("L") in
   let sim_ranges = make_ranges loc in
   let glo_ranges = gvars_ranges loc in
   let p = pseparated ~loc (glo_ranges @ sim_ranges) in
@@ -72,6 +80,7 @@ let add_vars_to_simulation_inv loc =
   Simulation_invariant.reads vars
     
 let get loc =
+  Options.Self.feedback "Building axiomatic block about simulating variables" ;
   let vars_axioms = List.map (make_axiom loc) (Vars.ids()) in
   let sepa = make_separation loc in
   add_vars_to_simulation_inv loc ;

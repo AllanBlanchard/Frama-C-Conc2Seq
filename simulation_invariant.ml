@@ -6,7 +6,7 @@ let build () =
   match !invariant with
   | None ->
     let i = { (Cil_const.make_logic_info "simulation") 
-              with l_labels = [LogicLabel(None, "L")] }
+              with l_labels = [FormalLabel("L")] }
     in
     Logic_utils.add_logic_function i ;
     invariant := Some i ;

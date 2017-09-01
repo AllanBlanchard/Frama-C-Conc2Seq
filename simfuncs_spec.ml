@@ -47,15 +47,17 @@ let add_user_invariant () =
   in
   List.iter add_invariant (User_invariant.predicates ())
 
-let add_prepost_for id =
-  let loc = Cil_datatype.Location.unknown in
+let add_pre_for make_visitor id =
   let adapt p th =
     let name = "Original function contract" :: p.pred_name in
-    let visitor = Fun_preds.make_visitor th loc in
+    let visitor = make_visitor th None in
     { (Visitor.visitFramacPredicate visitor p) with pred_name = name }
   in
   let pre = Functions.precondition id in
   List.iter (fun p -> Functions.add_ensures_thread id (adapt p)) pre
 
 let add_prepost () =
-  List.iter add_prepost_for (Functions.ids())
+  let loc = Cil_datatype.Location.unknown in
+  let make_visitor th res = Fun_preds.make_visitor th ~res loc in
+  List.iter (add_pre_for make_visitor) (Functions.ids()) ;
+  Statements.process_callret_specs make_visitor

@@ -12,7 +12,7 @@ let build () =
   let pred = pors ((gen_equality 0) :: List.map gen_equality sids) in
   let result = {
     (Cil_const.make_logic_info "valid_pc") with
-    l_labels = [LogicLabel(None, "L")] ;
+    l_labels = [FormalLabel("L")] ;
     l_profile = [pc] ;
     l_body    = LBpred pred
   }
@@ -37,7 +37,7 @@ let build_invariant_li () =
   let loc = Cil_datatype.Location.unknown in
   let lth = Cil_const.make_logic_var_formal "th" Linteger in
   let th  = tvar lth in
-  let lbl = LogicLabel(None, "L") in
+  let lbl = FormalLabel("L") in
   let return_pc_value id =
     let t = term (TLval (Vars.l_access id ~th:(Some th) loc)) Linteger in
     app t lbl

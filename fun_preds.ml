@@ -2,12 +2,16 @@ open Cil_types
 
 
 module LImap = Map.Make(struct type t = int let compare = compare end)
-let logic_infos              = ref LImap.empty
+let logic_infos = ref LImap.empty
 
 class base_type = Visitor.frama_c_copy
-class term_visitor prj th loc = object(_)
+class term_visitor prj th result loc = object(me)
   inherit base_type prj
 
+  method private pr_term t = Visitor.visitFramacTerm (me :> base_type) t
+  method private pr_toffset o = Visitor.visitFramacTermOffset (me :> base_type) o
+  method private pr_tlval lv = Visitor.visitFramacTermLval (me :> base_type) lv
+  
   method! vterm_node _ =
     let modify node =
       match node with
@@ -23,13 +27,29 @@ class term_visitor prj th loc = object(_)
         Papp(LImap.find li.l_var_info.lv_id !logic_infos, lbls, th :: params)
       | _ -> node
     in Cil.DoChildrenPost modify
-    
+
+  method! vterm t =
+    match t.term_node with
+    | TLval(TResult(_), offset) ->
+      let offset = me#pr_toffset offset in
+      let host, off = match result with
+        | None ->
+          Options.Self.failure "Result cannot be translated" ;
+          assert false
+        | Some lv -> me#pr_tlval lv
+      in
+      let noff = Logic_const.addTermOffset off offset in
+      Cil.ChangeTo (Logic_const.term (TLval (host, noff)) t.term_type)
+    | _ -> Cil.DoChildren
+
   method! vterm_lval _ =
     let modify (host, offset) =
       match host with
       | TVar(lv) ->
         begin match lv.lv_origin with
           | None -> host, offset
+          | Some vi when Thread_local.is_thread_local vi ->
+            Vars.l_access vi.vid ~th:(Some th) ~no:offset loc
           | Some vi when vi.vglob ->
             Vars.l_access vi.vid ~th:None ~no:offset loc
           | Some vi ->
@@ -40,9 +60,12 @@ class term_visitor prj th loc = object(_)
     Cil.DoChildrenPost modify
 end
 
+let make_visitor th ?res:(res=None) loc =
+  new term_visitor (Project.current()) th res loc
+
 let transform_body body th =
   let loc = Cil.CurrentLoc.get() in
-  let visitor = new term_visitor (Project.current()) th loc in
+  let visitor = make_visitor th loc in
   match body with
   | LBnone ->
     LBnone
@@ -84,6 +107,3 @@ let globals loc =
       Annotations.add_global Options.emitter g ;
       GAnnot(g, loc)
   ) (LImap.bindings !logic_infos)
-
-let make_visitor th loc =
-  new term_visitor (Project.current()) th loc
