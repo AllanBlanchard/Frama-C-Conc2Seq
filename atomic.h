@@ -47,7 +47,7 @@ size_t some_thread();
 #define atomic_store(TYPE, loc, des) atomic_store_##TYPE(loc, des)
 
 
-#define need_compare_exchange(TYPE)				\
+#define need_atomic_compare_exchange(TYPE)				\
   /*@									\
     requires \valid(loc) && \valid(exp);				\
     assigns  *loc, *exp;						\
@@ -66,9 +66,9 @@ size_t some_thread();
     disjoint behaviors ;                                                \
     complete behaviors ;                                                \
   */									\
-  int compare_exchange_strong_##TYPE(TYPE volatile* loc, TYPE* exp, TYPE des)
+  int atomic_compare_exchange_strong_##TYPE(TYPE volatile* loc, TYPE* exp, TYPE des)
 
-#define compare_exchange(TYPE, loc, exp, des) compare_exchange_strong_##TYPE(loc, exp, des)
+#define atomic_compare_exchange(TYPE, loc, exp, des) atomic_compare_exchange_strong_##TYPE(loc, exp, des)
 
 #define need_atomic_exchange(TYPE)					\
   /*@									\
@@ -82,29 +82,65 @@ size_t some_thread();
 
 #define atomic_exchange(TYPE, loc, des)	atomic_exchange_strong_##TYPE(loc, des)
 
-#define need_fetch_and_add(TYPE)					\
+#define need_atomic_fetch_add(TYPE)					\
   /*@									\
     requires \valid(loc);						\
     assigns  *loc;							\
-    ensures  *loc == \result+val;					\
+    ensures  *loc == (int) \result + val;				\
     ensures  \result == \old(*loc);					\
     atomic   \true;							\
   */									\
-  TYPE fetch_and_add_##TYPE(TYPE volatile* loc, TYPE val)
+  TYPE atomic_fetch_add_##TYPE(TYPE volatile* loc, TYPE val)
 
-#define fetch_and_add(TYPE, loc, val) fetch_and_add_##TYPE(loc, val)
+#define atomic_fetch_add(TYPE, loc, val) atomic_fetch_add_##TYPE(loc, val)
 
 
-#define need_fetch_and_sub(TYPE)					\
+#define need_atomic_fetch_sub(TYPE)					\
   /*@									\
     requires \valid(loc);						\
     assigns  *loc;							\
-    ensures  *loc == \result-val;					\
+    ensures  *loc == (int) \result - val;				\
     ensures  \result == \old(*loc);					\
     atomic   \true;							\
   */									\
-  TYPE fetch_and_sub_##TYPE(TYPE volatile* loc, TYPE val)
+  TYPE atomic_fetch_sub_##TYPE(TYPE volatile* loc, TYPE val)
 
-#define fetch_and_sub(TYPE, loc, val) fetch_and_sub_##TYPE(loc, val)
+#define atomic_fetch_sub(TYPE, loc, val) atomic_fetch_sub_##TYPE(loc, val)
+
+#define need_atomic_fetch_or(TYPE)					\
+  /*@									\
+    requires \valid(loc);						\
+    assigns  *loc;							\
+    ensures  *loc == ((int) \result | val);				\
+    ensures  \result == \old(*loc);					\
+    atomic   \true;							\
+  */									\
+  TYPE atomic_fetch_or_##TYPE(TYPE volatile* loc, TYPE val)
+
+#define atomic_fetch_or(TYPE, loc, val) atomic_fetch_or_##TYPE(loc, val)
+
+#define need_atomic_fetch_xor(TYPE)					\
+  /*@									\
+    requires \valid(loc);						\
+    assigns  *loc;							\
+    ensures  *loc == ((int) \result ^ val);				\
+    ensures  \result == \old(*loc);					\
+    atomic   \true;							\
+  */									\
+  TYPE atomic_fetch_xor_##TYPE(TYPE volatile* loc, TYPE val)
+
+#define atomic_fetch_xor(TYPE, loc, val) atomic_fetch_xor_##TYPE(loc, val)
+
+#define need_atomic_fetch_and(TYPE)					\
+  /*@									\
+    requires \valid(loc);						\
+    assigns  *loc;							\
+    ensures  *loc == ((int) \result & val);				\
+    ensures  \result == \old(*loc);					\
+    atomic   \true;							\
+  */									\
+  TYPE atomic_fetch_and_##TYPE(TYPE volatile* loc, TYPE val)
+
+#define atomic_fetch_and(TYPE, loc, val) atomic_fetch_and_##TYPE(loc, val)
 
 #define ATOMIC(x) /*@ atomic \true; */{ x }
