@@ -245,17 +245,14 @@ let add_stmt kf stmt =
   let transformer = Code_transformer.visitor (Project.current()) th loc in
   let body, next = match stmt.skind with
     | Instr(Set(_)) | Instr(Local_init(_,AssignInit(_),_)) ->
-      Options.Self.feedback "Reached 1" ;
       set transformer affect stmt
     | Instr(Call(Some(_),_,_,_)) | Instr(Local_init(_,ConsInit(_),_))
       when not(Query.sload Atomic_spec.atomic_call_stmt stmt) ->
-      Options.Self.feedback "Reached 2" ;
       let dum, result, next = call_ret transformer affect stmt th stmt.sid in
       return_loading kf stmt dum ;
       result, next
     | Instr(Call(None,_,_,_))
       when not(Query.sload Atomic_spec.atomic_call_stmt stmt) ->
-      Options.Self.feedback "Reached 3" ;
       call_void transformer affect stmt th stmt.sid
     | Instr(Call(_,_,_,_)) | Instr(Local_init(_,ConsInit(_),_)) ->
       atomic_call transformer affect stmt

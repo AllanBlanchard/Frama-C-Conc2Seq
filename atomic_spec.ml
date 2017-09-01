@@ -52,7 +52,6 @@ let atomic_call instr =
   atomic_fct (Globals.Functions.get fct)
 
 let atomic_call_stmt s =
-  Options.Self.feedback "Reached TEST" ;
   match s.skind with
   | Instr(i) -> atomic_call i
   | _ -> assert false
