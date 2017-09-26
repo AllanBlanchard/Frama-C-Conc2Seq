@@ -8,8 +8,10 @@ let run () =
   Query.prepare (Project.current()) ;
   let extra_args = Dynamic.Parameter.String.get "-cpp-extra-args" () in
   if not (contains extra_args "-CC") then begin
-    Options.Self.warning "We require the compiler to keep comments. \
-                          Adding -CC to -cpp-extra-args" ;
+    Options.Self.warning "We require the compiler to keep comments during \
+                          MACRO expansion, allowing to generate specification \
+                          for functions in atomic.h.\nAdding -CC to \
+                          -cpp-extra-args" ;
     Dynamic.Parameter.String.set "-cpp-extra-args" (extra_args ^ " -CC")
   end ;
   try
