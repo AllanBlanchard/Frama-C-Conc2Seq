@@ -1,7 +1,10 @@
-FRAMAC_SHARE := $(shell frama-c -print-path)
-FRAMAC_LIBDIR := $(shell frama-c -print-libpath)
-PLUGIN_NAME = Conc2Seq
-PLUGIN_CMO = \
+FRAMAC_SHARE := $(shell frama-c-config -print-share-path)
+
+PLUGIN_DIR ?= .
+
+PLUGIN_NAME := Conc2Seq
+
+PLUGIN_CMO := \
 	errors\
 	options\
 	query\
@@ -24,6 +27,8 @@ PLUGIN_CMO = \
 	lemmas\
 	simulation\
 	register
-#PLUGIN_GUI_CMO = cfg_gui
-#PLUGIN_DEPENDENCIES+=Genassigns
+
+PLUGIN_NO_TEST := yes
+PLUGIN_DISTRIBUTED := no
+
 include $(FRAMAC_SHARE)/Makefile.dynamic

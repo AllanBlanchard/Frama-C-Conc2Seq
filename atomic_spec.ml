@@ -2,7 +2,7 @@ open Cil_types
 (*open Logic_const*)
 open Logic_typing
 
-let count = ref 0 
+let atomic_count = ref 0 
 let atomic_typer ~typing_context ~loc ps =
   let open Logic_ptree in
   match ps with
@@ -13,7 +13,7 @@ let atomic_typer ~typing_context ~loc ps =
                   p
               ]
   | [] ->
-    let id = !count in incr count ; Ext_id id
+    let id = !atomic_count in incr atomic_count ; Ext_id id
   | _ ->
     typing_context.error loc "expecting a \true after keyword atomic"
 
@@ -56,4 +56,23 @@ let atomic_call_stmt s =
   | Instr(i) -> atomic_call i
   | _ -> assert false
 
-let () = register_behavior_extension "atomic" atomic_typer
+
+let strong_inv_count = ref 0 
+
+let loop_strong_inv_typer ~typing_context ~loc ps =
+  
+  match ps with
+  | p :: [] ->
+    Ext_preds [ typing_context.type_predicate
+                 typing_context
+                 (typing_context.post_state [Normal])
+                 p
+              ]
+  | [] ->
+    let id = !strong_inv_count in incr strong_inv_count ; Ext_id id
+  | _ ->
+    typing_context.error loc "expecting a predicate after keyword strong invariant"
+
+let () =
+  register_behavior_extension "atomic" atomic_typer ;
+  register_behavior_extension "strong_invariant" loop_strong_inv_typer
