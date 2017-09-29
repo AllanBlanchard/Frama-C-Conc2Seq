@@ -26,14 +26,22 @@ let run () =
 
       if Options.Check.get() then
         Query.simulation Filecheck.check_ast "Checking simulation AST" ;
-    
-      if not(0 = String.compare (Options.OutputFile.get()) "") then begin
-        Query.simulation (fun () ->
-            let out_file  = open_out (Options.OutputFile.get()) in
-            let formatter = Format.formatter_of_out_channel out_file in
-            File.pretty_ast ~prj:(Project.current()) ~fmt:formatter ();
-            close_out out_file
-          ) ()
+
+      let filename = Options.OutputFile.get() in
+      if not(0 = String.compare filename "") then begin
+        if not (0 = String.compare filename "stdout") then begin
+          Query.simulation (fun () ->
+              let out_file  = open_out (Options.OutputFile.get()) in
+              let formatter = Format.formatter_of_out_channel out_file in
+              File.pretty_ast ~prj:(Project.current()) ~fmt:formatter ();
+              close_out out_file
+            ) ()
+        end
+        else
+          Query.simulation (fun () ->
+              let ast = Ast.get() in
+              Options.Self.feedback "%a" Printer.pp_file ast
+            ) ()
       end;
     else
       ()

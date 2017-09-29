@@ -55,7 +55,7 @@ let gvars_ranges loc =
       match vi.vtype with
       | TPtr(_) ->
         Options.Self.warning
-          "%a is a pointer, separation with simulation is not currently\
+          "%a is a pointer, separation with simulation is not currently \
            supported (ignored)"
           Cil_datatype.Varinfo.pretty vi
       | _ ->
