@@ -5,6 +5,9 @@ let contains s1 s2 =
   with Not_found -> false
 
 let run () =
+  let enabled = Options.Enabled.get() in
+  let check   = Options.Check.get() in
+  
   Query.prepare (Project.current()) ;
   let extra_args = Dynamic.Parameter.String.get "-cpp-extra-args" () in
   if not (contains extra_args "-CC") then begin
@@ -15,23 +18,23 @@ let run () =
     Dynamic.Parameter.String.set "-cpp-extra-args" (extra_args ^ " -CC")
   end ;
   try
-    if Options.Enabled.get() then
+    if enabled then
       let sl_prj, orig_to_sl = Single_load.make "Single memory loads" in
       Query.add_sload orig_to_sl sl_prj ;
     
-      if Options.Check.get() then
+      if check then
         Query.sload Filecheck.check_ast "Checking single load AST" ;
 
       ignore(Simulation.make ()) ;
 
-      if Options.Check.get() then
+      if check then
         Query.simulation Filecheck.check_ast "Checking simulation AST" ;
 
       let filename = Options.OutputFile.get() in
       if not(0 = String.compare filename "") then begin
         if not (0 = String.compare filename "stdout") then begin
           Query.simulation (fun () ->
-              let out_file  = open_out (Options.OutputFile.get()) in
+              let out_file  = open_out filename in
               let formatter = Format.formatter_of_out_channel out_file in
               File.pretty_ast ~prj:(Project.current()) ~fmt:formatter ();
               close_out out_file
