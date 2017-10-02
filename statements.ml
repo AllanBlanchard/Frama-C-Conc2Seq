@@ -5,7 +5,7 @@ module Smap = Map.Make(struct type t = int let compare = compare end)
 let statements = ref Smap.empty
 
 let base_simulation name =
-  Options.Self.feedback "Generating %s function" name ;
+  Options.feedback "Generating %s function" name ;
   let def = Cil.emptyFunction name in
   Cil.setReturnType def Cil.voidType ;
   let th   = Cil.makeFormalVar def "th" Cil.uintType in
@@ -13,7 +13,7 @@ let base_simulation name =
   (def, th)
 
 let finalize def body loc =
-  Options.Self.feedback "Finalizing" ;
+  Options.feedback "Finalizing" ;
   def.sbody   <- { body with blocals = body.blocals @ def.sbody.blocals };
   def.slocals <- def.sbody.blocals ;
   let new_kf = { fundec = Definition(def, loc); spec = def.sspec } in
@@ -45,7 +45,7 @@ let rec skip_skip stmt =
   | _ -> stmt
 
 let set transformer affect s =
-  Options.Self.debug "Assignement: (%d) - %a"
+  Options.debug "Assignement: (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
   let next = (skip_skip (List.hd s.succs)).sid in
@@ -80,7 +80,7 @@ let call transformer affect fct le next th loc sid =
   loads @ [from_stmt ; pc_stmt ]
 
 let call_ret transformer affect s th sid =
-  Options.Self.debug "Non-atomic function call (with ret): (%d) - %a"
+  Options.debug "Non-atomic function call (with ret): (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
   let dummy = List.hd s.succs in
@@ -98,7 +98,7 @@ let call_ret transformer affect s th sid =
   dummy, call transformer affect fct l next_call th loc sid, [next_call]
 
 let atomic_call transformer affect s =
-  Options.Self.debug "Atomic function call: (%d) - %a"
+  Options.debug "Atomic function call: (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
   let s = match s.skind with
@@ -114,7 +114,7 @@ let atomic_call transformer affect s =
   [ stmt ; ret ], [ next ]
 
 let call_void transformer affect s th sid =
-  Options.Self.debug "Non-atomic function call (void): (%d) - %a"
+  Options.debug "Non-atomic function call (void): (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
   let next_call = (skip_skip (List.hd s.succs)).sid in
@@ -129,7 +129,7 @@ let call_void transformer affect s th sid =
   call transformer affect fct l next_call th loc sid, [ next_call ]
 
 let return kf stmt th =
-  Options.Self.debug "Return: (%d) - %a"
+  Options.debug "Return: (%d) - %a"
     stmt.sid
     Cil_datatype.Stmt.pretty stmt ;
   (* The call to get_vi is NOT SAFE but the way it is implemented (Silicon) *)
@@ -146,7 +146,7 @@ let return kf stmt th =
   [affect], []
 
 let cond transformer affect s loc =
-  Options.Self.debug "Conditional: (%d) - %a"
+  Options.debug "Conditional: (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
   match s.skind with
@@ -159,7 +159,7 @@ let cond transformer affect s loc =
   | _ -> assert false
 
 let switch transformer affect s loc =
-  Options.Self.debug "Switch: (%d) - %a"
+  Options.debug "Switch: (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
   match s.skind with
@@ -188,7 +188,7 @@ let after_block s =
   Query.sload after_block_aux s
 
 let at_block transformer affect s =
-  Options.Self.debug "Atomic block: (%d) - %a"
+  Options.debug "Atomic block: (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
   assert (Atomic_spec.atomic_stmt s) ;
@@ -203,7 +203,7 @@ let at_block transformer affect s =
   | _ -> assert false
 
 let return_loading kf stmt dum =
-  Options.Self.debug "Return loading: (%d) - %a"
+  Options.debug "Return loading: (%d) - %a"
     stmt.sid
     Cil_datatype.Stmt.pretty stmt ;
   let old_ret, fct, loc = match stmt.skind with
@@ -265,11 +265,11 @@ let add_stmt kf stmt =
     | Block(_)  ->
       at_block transformer affect stmt
     | Loop(_,b,_,_,_) when b.bstmts = [] ->
-      Options.Self.debug "Loop: (%d) - %a" stmt.sid
+      Options.debug "Loop: (%d) - %a" stmt.sid
         Cil_datatype.Stmt.pretty stmt ;
       [affect stmt.sid], [stmt.sid]
     | Loop(_,b,_,_,_) ->
-      Options.Self.debug "Loop: (%d) - %a" stmt.sid
+      Options.debug "Loop: (%d) - %a" stmt.sid
         Cil_datatype.Stmt.pretty stmt ;
       let next = (skip_skip (List.hd b.bstmts)).sid in
       [affect next], [next]

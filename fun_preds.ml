@@ -34,7 +34,7 @@ class term_visitor prj th result loc = object(me)
       let offset = me#pr_toffset offset in
       let host, off = match result with
         | None ->
-          Options.Self.failure "Result cannot be translated" ;
+          Options.failure "Result cannot be translated" ;
           assert false
         | Some lv -> me#pr_tlval lv
       in

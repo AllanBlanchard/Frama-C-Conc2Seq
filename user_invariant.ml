@@ -4,7 +4,7 @@ let invariant = ref []
 
 let register li  =
   let name = li.l_var_info.lv_name in
-  Options.Self.feedback "Registering user invariant: %s" name ;
+  Options.feedback "Registering user invariant: %s" name ;
   let p = match li.l_body with LBpred(p) -> p | _ -> assert false in
   let th = Cil_const.make_logic_var_quant "th" Linteger in
   let loc = Cil.CurrentLoc.get() in

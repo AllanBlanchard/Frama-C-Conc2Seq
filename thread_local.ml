@@ -69,14 +69,14 @@ let rec thlocal_gannot ga =
   | Dtype(_) ->
     false
   | Dvolatile(_) ->
-    Options.Self.warning "Volatile annotations %s" msg_end ;
+    Options.warning "Volatile annotations %s" msg_end ;
     false
   | Dtype_annot(_) ->
-    Options.Self.warning "Type invariant annotations %s" msg_end ;
+    Options.warning "Type invariant annotations %s" msg_end ;
     false
   | Dmodel_annot(_) ->
-    Options.Self.warning "Model fields annotations %s" msg_end ;
+    Options.warning "Model fields annotations %s" msg_end ;
     false
   | Dcustom_annot(_) ->
-    Options.Self.warning "Custom annotations %s" msg_end ;
+    Options.warning "Custom annotations %s" msg_end ;
     false

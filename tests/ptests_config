@@ -1,0 +1,8 @@
+DEFAULT_SUITES= variables
+TOPLEVEL_PATH=/usr/local/bin/frama-c
+FRAMAC_SHARE=/usr/local/share/frama-c
+FRAMAC_LIB=/usr/local/lib/frama-c
+FRAMAC_PLUGIN=.:/usr/local/lib/frama-c/plugins
+FRAMAC_PLUGIN_GUI=./gui:/usr/local/lib/frama-c/plugins/gui
+OCAMLFIND_IGNORE_DUPS_IN=/usr/local/lib/frama-c/plugins
+OCAMLRUNPARAM=

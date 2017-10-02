@@ -67,7 +67,7 @@ let random_thread_stmt th loc =
 
 let build_code loc = 
   let open Cil in
-  Options.Self.feedback "Generating interleaving function";
+  Options.feedback "Generating interleaving function";
   let def = Cil.emptyFunction "interleave" in
   Cil.setReturnType def Cil.voidType ;
   let th  = makeLocalVar def "th" uintType in

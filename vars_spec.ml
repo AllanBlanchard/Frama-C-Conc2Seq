@@ -4,7 +4,7 @@ open Logic_const
 
 let make_axiom loc id =
   let vname = Vars.sname id in
-  Options.Self.feedback "Building validity axiom for %s" vname ;
+  Options.feedback "Building validity axiom for %s" vname ;
   let j   = Cil_const.make_logic_var_quant "j" Linteger in
   let lj  = tvar j in
   let lbl = FormalLabel("L") in
@@ -39,7 +39,7 @@ let gvar_range loc vi =
     let tlval = TVar(lv), TIndex(range, TNoOffset) in
     mk_logic_AddrOf ~loc tlval (Ctype (TPtr(typ,[])))
   | _ ->
-    Options.Self.failure "attempt to create a range for an unsupported type" ;
+    Options.failure "attempt to create a range for an unsupported type" ;
     assert false
     
 let gvars_ranges loc =
@@ -54,19 +54,19 @@ let gvars_ranges loc =
   List.iter(fun vi ->
       match vi.vtype with
       | TPtr(_) ->
-        Options.Self.warning
+        Options.warning
           "%a is a pointer, separation with simulation is not currently \
            supported (ignored)"
           Cil_datatype.Varinfo.pretty vi
       | _ ->
-        Options.Self.failure "attempt to create a range for an\
+        Options.failure "attempt to create a range for an\
                               unsupported type" ;
         assert false
     ) unusable ;
   List.map (gvar_range loc) usable
 
 let make_separation loc =
-  Options.Self.feedback "Building axiom about simulating variables separation" ;
+  Options.feedback "Building axiom about simulating variables separation" ;
   let lbl = FormalLabel("L") in
   let sim_ranges = make_ranges loc in
   let glo_ranges = gvars_ranges loc in
@@ -80,7 +80,7 @@ let add_vars_to_simulation_inv loc =
   Simulation_invariant.reads vars
     
 let get loc =
-  Options.Self.feedback "Building axiomatic block about simulating variables" ;
+  Options.feedback "Building axiomatic block about simulating variables" ;
   let vars_axioms = List.map (make_axiom loc) (Vars.ids()) in
   let sepa = make_separation loc in
   add_vars_to_simulation_inv loc ;

@@ -1,9 +1,8 @@
 let plugin_name = "conc2seq"
 let plugin_shortname = "c2s"
-let emitter = Emitter.create plugin_shortname [Emitter.Code_annot] [] []
+let emitter = Emitter.create "C2S" [Emitter.Code_annot] [] []
 
-module Self =
-  Plugin.Register(
+include Plugin.Register(
   struct
     let name = plugin_name
     let shortname = plugin_shortname
@@ -12,7 +11,7 @@ module Self =
   end)
 
 module Enabled =
-  Self.False(
+  False(
   struct
     let option_name = "-" ^ plugin_shortname
     let help = "when on (off by default), creates a simulation for \
@@ -20,7 +19,7 @@ module Enabled =
   end)
 
 module Check =
-  Self.False(
+  False(
   struct
     let option_name = "-" ^ plugin_shortname ^ "-check"
     let help = "when on (off by default), checks the generated AST \
@@ -28,7 +27,7 @@ module Check =
   end)                                          
 
 module OutputFile =
-  Self.Empty_string(
+  Empty_string(
   struct
     let option_name = "-" ^ plugin_shortname ^ "-output"
     let arg_name = "output-file"

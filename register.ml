@@ -8,7 +8,7 @@ let run () =
   Query.prepare (Project.current()) ;
   let extra_args = Dynamic.Parameter.String.get "-cpp-extra-args" () in
   if not (contains extra_args "-CC") then begin
-    Options.Self.warning "We require the compiler to keep comments during \
+    Options.warning "We require the compiler to keep comments during \
                           MACRO expansion, allowing to generate specification \
                           for functions in atomic.h.\nAdding -CC to \
                           -cpp-extra-args" ;
@@ -40,16 +40,16 @@ let run () =
         else
           Query.simulation (fun () ->
               let ast = Ast.get() in
-              Options.Self.feedback "%a" Printer.pp_file ast
+              Options.feedback "%a" Printer.pp_file ast
             ) ()
       end;
     else
       ()
   with
   | Errors.BadConstruct(s) ->
-    Options.Self.abort "%s are not supported" s
+    Options.abort "%s are not supported" s
   | Errors.MissingAtomicFile(s) ->
-    Options.Self.abort "%s not found, atomic.h not included ?" s 
+    Options.abort "%s not found, atomic.h not included ?" s 
 
 let () = 
   Db.Main.extend run

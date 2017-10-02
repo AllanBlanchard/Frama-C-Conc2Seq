@@ -68,7 +68,7 @@ let ptr_of_local vid =
   else if Vmap.mem vid !locals   then Vmap.find vid !locals
   else if Vmap.mem vid !thlocals then Vmap.find vid !thlocals
   else if Vmap.mem vid !fromvars then Vmap.find vid !fromvars
-  else (Options.Self.feedback "Accessing %d" vid ; assert false)
+  else (Options.feedback "Accessing %d" vid ; assert false)
 
 let sname vid = (ptr_of_local vid).vname
 

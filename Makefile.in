@@ -1,8 +1,15 @@
-FRAMAC_SHARE := $(shell frama-c-config -print-share-path)
+ifndef FRAMAC_SHARE
+FRAMAC_SHARE  :=$(shell frama-c-config -print-share-path)
+endif
+ifndef FRAMAC_LIBDIR
+FRAMAC_LIBDIR :=$(shell frama-c-config -print-libpath)
+endif
 
 PLUGIN_DIR ?= .
+PLUGIN_ENABLE := @ENABLE_CONCTOSEQ@
+PLUGIN_DISTRIBUTED:=$(PLUGIN_ENABLE)
 
-PLUGIN_NAME := Conc2Seq
+PLUGIN_NAME := ConcToSeq
 
 PLUGIN_CMO := \
 	errors\
@@ -28,7 +35,23 @@ PLUGIN_CMO := \
 	simulation\
 	register
 
-PLUGIN_NO_TEST := yes
-PLUGIN_DISTRIBUTED := no
+PLUGIN_DISTRIB_EXTERNAL:= Makefile.in configure.in configure
+
+PLUGIN_TESTS_DIRS:= \
+	variables
 
 include $(FRAMAC_SHARE)/Makefile.dynamic
+
+#####################################
+# Regenerating the Makefile on need #
+#####################################
+
+ifeq ("$(FRAMAC_INTERNAL)","yes")
+CONFIG_STATUS_DIR=$(FRAMAC_SRC)
+else
+CONFIG_STATUS_DIR=.
+endif
+
+$(ConcToSeq_DIR)/Makefile: $(ConcToSeq_DIR)/Makefile.in \
+                         $(CONFIG_STATUS_DIR)/config.status
+	cd $(CONFIG_STATUS_DIR) && ./config.status --file $@
