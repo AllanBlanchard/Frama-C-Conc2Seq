@@ -6,19 +6,20 @@ let contains s1 s2 =
 
 let run () =
   let enabled = Options.Enabled.get() in
-  let check   = Options.Check.get() in
   
-  Query.prepare (Project.current()) ;
-  let extra_args = Dynamic.Parameter.String.get "-cpp-extra-args" () in
-  if not (contains extra_args "-CC") then begin
-    Options.warning "We require the compiler to keep comments during \
-                          MACRO expansion, allowing to generate specification \
-                          for functions in atomic.h.\nAdding -CC to \
-                          -cpp-extra-args" ;
-    Dynamic.Parameter.String.set "-cpp-extra-args" (extra_args ^ " -CC")
-  end ;
   try
     if enabled then
+      let check   = Options.Check.get() in
+      
+      Query.prepare (Project.current()) ;
+      let extra_args = Dynamic.Parameter.String.get "-cpp-extra-args" () in
+      if not (contains extra_args "-CC") then begin
+        Options.warning "We require the compiler to keep comments during \
+                         MACRO expansion, allowing to generate specification \
+                         for functions in atomic.h.\nAdding -CC to \
+                         -cpp-extra-args" ;
+        Dynamic.Parameter.String.set "-cpp-extra-args" (extra_args ^ " -CC")
+      end ;
       let sl_prj, orig_to_sl = Single_load.make "Single memory loads" in
       Query.add_sload orig_to_sl sl_prj ;
     
