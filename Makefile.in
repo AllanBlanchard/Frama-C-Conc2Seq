@@ -38,8 +38,7 @@ PLUGIN_CMO := \
 PLUGIN_DISTRIB_EXTERNAL:= Makefile.in configure.in configure
 
 PLUGIN_TESTS_DIRS:= \
-	variables\
-	set_instr
+	variables
 
 include $(FRAMAC_SHARE)/Makefile.dynamic
 
