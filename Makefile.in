@@ -28,7 +28,7 @@ PLUGIN_CMO := \
 	simulation_invariant\
 	vars_spec\
 	simulation_axioms\
-	fun_preds\
+	logic_transformer\
 	user_invariant\
 	simfuncs_spec\
 	lemmas\

@@ -25,7 +25,7 @@ let register name labels predicate =
   let open Logic_const in
   let th = Cil_const.make_logic_var_quant "th" Linteger in
   let loc = Cil.CurrentLoc.get() in
-  let visitor = Fun_preds.make_visitor (tvar th) loc in
+  let visitor = Logic_transformer.visitor (tvar th) loc in
   let p = Visitor.visitFramacPredicate visitor predicate in
   let valid_th = Atomic_header.valid_thread_id (tvar th) in
   let p = pforall ([th], pimplies (valid_th , p)) in

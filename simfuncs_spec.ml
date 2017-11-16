@@ -89,6 +89,6 @@ let add_pre_for make_visitor id =
 
 let add_prepost () =
   let loc = Cil_datatype.Location.unknown in
-  let make_visitor th res = Fun_preds.make_visitor th ~res loc in
+  let make_visitor th res = Logic_transformer.visitor th ~res loc in
   List.iter (add_pre_for make_visitor) (Functions.get_all_ids()) ;
   Statements.process_callreturn_sites_spec make_visitor

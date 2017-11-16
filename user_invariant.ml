@@ -27,7 +27,7 @@ let register li  =
   let p = match li.l_body with LBpred(p) -> p | _ -> assert false in
   let th = Cil_const.make_logic_var_quant "th" Linteger in
   let loc = Cil.CurrentLoc.get() in
-  let visitor = Fun_preds.make_visitor (Logic_const.tvar th) loc in
+  let visitor = Logic_transformer.visitor (Logic_const.tvar th) loc in
   
   let new_p = if Thread_local.predicate p then
       let p = Visitor.visitFramacPredicate visitor p in

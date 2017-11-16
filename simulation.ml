@@ -178,7 +178,7 @@ class visitor = object(_)
     List.iter (fun (kf, s) -> Statements.add_kf_stmt kf s) statements ;
 
     (* Process existing specs *)
-    List.iter (fun li -> Fun_preds.register li) user_lfuncs ;
+    List.iter (fun li -> Logic_transformer.register li) user_lfuncs ;
     List.iter (fun (n,lbls,p) -> Lemmas.register n lbls p) user_lemmas ;
     List.iter (fun li -> User_invariant.register li) user_invariant ;
     
@@ -198,7 +198,7 @@ class visitor = object(_)
       let choose = Interleavings.get_choose loc in
       let pcpreds = Program_counter.globals loc in
       let vannots  = [GAnnot ((Simulation_axioms.get loc), loc)] in
-      let lfuncs = Fun_preds.globals loc in
+      let lfuncs = Logic_transformer.get_new_located_globals loc in
       let (*lemmas*)_ = Lemmas.globals loc in
       
       f.globals <-
