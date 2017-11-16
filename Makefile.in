@@ -6,10 +6,10 @@ FRAMAC_LIBDIR :=$(shell frama-c-config -print-libpath)
 endif
 
 PLUGIN_DIR ?= .
-PLUGIN_ENABLE := @ENABLE_CONCTOSEQ@
+PLUGIN_ENABLE := @ENABLE_CONC2SEQ@
 PLUGIN_DISTRIBUTED:=$(PLUGIN_ENABLE)
 
-PLUGIN_NAME := ConcToSeq
+PLUGIN_NAME := Conc2Seq
 
 PLUGIN_CMO := \
 	errors\
@@ -38,7 +38,8 @@ PLUGIN_CMO := \
 PLUGIN_DISTRIB_EXTERNAL:= Makefile.in configure.in configure
 
 PLUGIN_TESTS_DIRS:= \
-	variables
+	variables\
+	set_instr
 
 include $(FRAMAC_SHARE)/Makefile.dynamic
 
@@ -52,6 +53,6 @@ else
 CONFIG_STATUS_DIR=.
 endif
 
-$(ConcToSeq_DIR)/Makefile: $(ConcToSeq_DIR)/Makefile.in \
+$(Conc2Seq_DIR)/Makefile: $(Conc2Seq_DIR)/Makefile.in \
                          $(CONFIG_STATUS_DIR)/config.status
 	cd $(CONFIG_STATUS_DIR) && ./config.status --file $@

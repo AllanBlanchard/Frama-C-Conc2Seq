@@ -1,3 +1,22 @@
+(**************************************************************************)
+(*  This file is part of Conc2Seq plug-in of Frama-C.                     *)
+(*                                                                        *)
+(*  Copyright (C) 2016-2017 Allan Blanchard                               *)
+(*                                                                        *)
+(*  you can redistribute it and/or modify it under the terms of the GNU   *)
+(*  Lesser General Public License as published by the Free Software       *)
+(*  Foundation, version 3.                                                *)
+(*                                                                        *)
+(*  It is distributed in the hope that it will be useful,                 *)
+(*  but WITHOUT ANY WARRANTY; without even the implied warranty of        *)
+(*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *)
+(*  GNU Lesser General Public License for more details.                   *)
+(*                                                                        *)
+(*  See the GNU Lesser General Public License version 3                   *)
+(*  for more details (enclosed in the file LICENCE).                      *)
+(*                                                                        *)
+(**************************************************************************)
+
 open Cil_types
 
 module Smap = Map.Make(struct type t = int let compare = compare end)
@@ -54,6 +73,10 @@ let set transformer affect s =
     | Instr(Set(_)) -> s                         
     | Instr(Local_init(vi,AssignInit(SingleInit(e)),loc)) ->
       Cil.mkStmt(Instr(Set( (Var(vi), NoOffset), e, loc)))
+    | Instr(Local_init(_,AssignInit(_),_)) ->
+      Options.error "Local initialization of structures/arrays \
+                     is not currently supported (ignore)" ;
+      Cil.mkStmt(Instr(Cil.dummyInstr))
     | _ -> assert false
   in
   let nstmt = Visitor.visitFramacStmt transformer s in

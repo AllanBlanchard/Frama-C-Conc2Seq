@@ -1,1 +1,1 @@
-OPT: -cpp-extra-args="-CC" -load-module Conc2Seq -c2s -c2s-output=stdout
+OPT: -cpp-extra-args="-CC" -c2s -c2s-output=stdout -c2s-check
