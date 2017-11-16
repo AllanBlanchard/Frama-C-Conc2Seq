@@ -71,7 +71,7 @@ class expr_visitor prj th loc = object(me)
   method! vlval _ = 
     let modify (host, offset) =
       match host with
-      | Var(vi) when Thread_local.is_thread_local vi ->
+      | Var(vi) when Thread_local.variable vi ->
         Vars.c_access vi.vid ~th:(Some th) ~no:offset loc
       | Var(vi) when vi.vglob ->
         Vars.c_access vi.vid ~th:(None   ) ~no:offset loc

@@ -19,7 +19,7 @@
 
 open Cil_types
 
-let is_tl vi = Thread_local.is_thread_local vi
+let is_tl vi = Thread_local.variable vi
 
 class empty_project prj = object(_)
   inherit Visitor.frama_c_copy prj
@@ -40,10 +40,10 @@ class empty_project prj = object(_)
     | GAnnot(Dinvariant(_),_) ->
       Cil.DoChildrenPost remove
     | GAnnot(Daxiomatic(name,l,attr,loc),_)
-      when Thread_local.thlocal_gannot(Daxiomatic(name,l,attr,loc)) ->
+      when Thread_local.gannot(Daxiomatic(name,l,attr,loc)) ->
       raise (Errors.BadConstruct "Axiomatic block with terms\
                                   involving thread-local variables")
-    | GAnnot(ga, _) when Thread_local.thlocal_gannot ga ->
+    | GAnnot(ga, _) when Thread_local.gannot ga ->
       Cil.DoChildrenPost remove
     | _ ->
       Cil.JustCopy
@@ -91,8 +91,7 @@ let collect_axioms () =
 let collect_lemmas () =
   let collect _ ca l =
     match ca with
-    | Dlemma(name, false, lbls, _, p, _, _)
-      when Thread_local.thlocal_predicate p ->
+    | Dlemma(name, false, lbls, _, p, _, _) when Thread_local.predicate p ->
       (name, lbls,p) :: l
     | _ -> l
   in
@@ -101,7 +100,7 @@ let collect_lemmas () =
 let collect_lfunctions () =
   let collect _ ca l =
     match ca with
-    | Dfun_or_pred(li, _) when Thread_local.thlocal_logic_info li ->
+    | Dfun_or_pred(li, _) when Thread_local.logic_info li ->
       li :: l
     | _ -> l
   in

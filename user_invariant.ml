@@ -29,7 +29,7 @@ let register li  =
   let loc = Cil.CurrentLoc.get() in
   let visitor = Fun_preds.make_visitor (Logic_const.tvar th) loc in
   
-  let new_p = if Thread_local.thlocal_predicate p then
+  let new_p = if Thread_local.predicate p then
       let p = Visitor.visitFramacPredicate visitor p in
       let valid_th = Atomic_header.valid_thread_id (Logic_const.tvar th) in
       Logic_const.pforall ([th], Logic_const.pimplies (valid_th, p))

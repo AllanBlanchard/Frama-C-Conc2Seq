@@ -22,10 +22,10 @@ open Cil_types
 let has_thread_local_attribute attr = 
   match attr with Attr("thread_local",[]) -> true | _ -> false
 
-let is_thread_local v = 
+let variable v = 
   List.exists has_thread_local_attribute v.vattr
 
-exception Shame ;;
+exception InvolveThreadLocal ;;
 
 (** TODO : Add a cache to avoid multiple logic_info traversals *)
 
@@ -50,41 +50,41 @@ class th_detector = object(me)
     match lv with
     | TVar(lv), _ ->
       begin match lv.lv_origin with
-      | Some v when is_thread_local v ->
-        raise Shame
+      | Some v when variable v ->
+        raise InvolveThreadLocal
       | _ ->
         Cil.DoChildren
       end
     | _ -> Cil.DoChildren      
 end
 
-let thlocal_logic_info li =
+let logic_info li =
   try
     ignore (Visitor.visitFramacLogicInfo (new th_detector) li) ;
     false
-  with Shame -> true
+  with InvolveThreadLocal -> true
   
-let thlocal_predicate p =
+let predicate p =
   try
     ignore (Visitor.visitFramacPredicate (new th_detector) p) ;
     false
-  with Shame -> true
+  with InvolveThreadLocal -> true
     
-let thlocal_term t =
+let term t =
   try
     ignore (Visitor.visitFramacTerm (new th_detector) t) ;
     false
-  with Shame -> true
+  with InvolveThreadLocal -> true
 
-let rec thlocal_gannot ga =
+let rec gannot ga =
   let msg_end = "are not supported, just keep them unchanged." in
   match ga with
   | Dfun_or_pred(li,_) | Dinvariant(li, _) ->
-    thlocal_logic_info li
+    logic_info li
   | Dlemma(_,_,_,_, p, _,_) ->
-    thlocal_predicate p
+    predicate p
   | Daxiomatic(_, list, _, _) ->
-    List.exists thlocal_gannot list
+    List.exists gannot list
   | Dtype(_) ->
     false
   | Dvolatile(_) ->

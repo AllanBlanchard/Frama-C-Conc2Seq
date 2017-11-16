@@ -67,7 +67,7 @@ class term_visitor prj th result loc = object(me)
       | TVar(lv) ->
         begin match lv.lv_origin with
           | None -> host, offset
-          | Some vi when Thread_local.is_thread_local vi ->
+          | Some vi when Thread_local.variable vi ->
             Vars.l_access vi.vid ~th:(Some th) ~no:offset loc
           | Some vi when vi.vglob ->
             Vars.l_access vi.vid ~th:None ~no:offset loc
@@ -115,7 +115,7 @@ let build_simulation li =
   nli
              
 let register li =
-  assert (Thread_local.thlocal_logic_info li) ;
+  assert (Thread_local.logic_info li) ;
   let nli = build_simulation li in
   logic_infos := LImap.add li.l_var_info.lv_id nli !logic_infos
 

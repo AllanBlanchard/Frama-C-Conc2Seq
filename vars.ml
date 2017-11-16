@@ -39,12 +39,12 @@ let initialize_pc () =
   pc := Some rpc
 
 let add_thread_local var _ =
-  assert(var.vglob && Thread_local.is_thread_local var) ;
+  assert(var.vglob && Thread_local.variable var) ;
   let simulation = create_simulation "tl" var in    
   thlocals := Vmap.add var.vid simulation !thlocals
 
 let add_global var init =
-  assert(var.vglob && not (Thread_local.is_thread_local var)) ;
+  assert(var.vglob && not (Thread_local.variable var)) ;
   globals := Vmap.add var.vid (var, init) !globals
 
 let add_local func var =
