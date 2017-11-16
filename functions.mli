@@ -19,23 +19,23 @@
 
 open Cil_types
 
-val add : Kernel_function.t -> unit
-val first_stmt : int -> stmt
-val return_stmt : int -> stmt
-val res_expression : int -> exp
-val formals : int -> varinfo list
-val name : int -> string
+val add_kf : Kernel_function.t -> unit
+val get_first_stmt_of : int -> stmt
+val get_return_stmt_of : int -> stmt
+val get_return_expression_of : int -> exp
+val get_formals_of : int -> varinfo list
+val get_name_of : int -> string
 val init_simulations : location -> global list
-val ids : unit -> int list
-val simulation : int -> varinfo
+val get_all_ids : unit -> int list
+val get_simulation_of : int -> varinfo
 
-val add_pc_steps : int -> unit
+val add_program_counter_prepost_to : int -> unit
 
-val precondition : int -> predicate list
-val postcondition : int -> predicate list
+val get_precondition_of : int -> predicate list
+val get_postcondition_of : int -> predicate list
 
-val add_requires : int -> predicate -> unit
-val add_requires_thread : int-> (term -> predicate) -> unit
+val add_requires_to : int -> predicate -> unit
+val add_requires_thread_dep_to : int-> (term -> predicate) -> unit
 
-val add_ensures : int -> predicate -> unit
-val add_ensures_thread : int -> (term -> predicate) -> unit
+val add_ensures_to : int -> predicate -> unit
+val add_ensures_thread_dep_to : int -> (term -> predicate) -> unit

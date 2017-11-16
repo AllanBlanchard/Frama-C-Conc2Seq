@@ -94,10 +94,10 @@ let call transformer affect fct le next th loc sid =
     let nv = Vars.c_access v.vid ~th:(Some (Cil.evar th)) loc in
     Cil.mkStmt(Instr(Set(nv, ne, loc)))
   in
-  let loads = List.map2 load (Functions.formals fct.vid) le in
+  let loads = List.map2 load (Functions.get_formals_of fct.vid) le in
 
   let from_stmt = affect_from fct th next loc in
-  let fst_kf  = Functions.first_stmt fct.vid in
+  let fst_kf  = Functions.get_first_stmt_of fct.vid in
   let pc_stmt = affect fst_kf.sid in
   call_callee := Smap.add sid (fct.vid , pc_stmt) !call_callee ;
   loads @ [from_stmt ; pc_stmt ]
@@ -244,7 +244,7 @@ let return_loading kf stmt dum =
   let name = (Globals.Functions.get_vi kf).vname^ "_"^(string_of_int dum.sid) in
   let (def, th) = base_simulation name in
 
-  let ret_exp = Functions.res_expression fct.vid in
+  let ret_exp = Functions.get_return_expression_of fct.vid in
   let transformer = Code_transformer.visitor (Project.current()) th loc in
   let ret   = Visitor.visitFramacLval transformer old_ret in
   let value = Visitor.visitFramacExpr transformer ret_exp in
@@ -374,9 +374,9 @@ let make_assert id stmt p_from_th =
   Annotations.add_assert Options.emitter ~kf stmt (p_from_th th)
 
 let process_call_site make_visitor id (fid, stmt) =
-  let pre = Functions.precondition fid in
+  let pre = Functions.get_precondition_of fid in
   let adapt p th =
-    let name = ((Functions.name fid) ^ " requires") :: p.pred_name in
+    let name = ((Functions.get_name_of fid) ^ " requires") :: p.pred_name in
     let visitor = make_visitor th None in
     { (Visitor.visitFramacPredicate visitor p) with pred_name = name }
   in
@@ -392,7 +392,7 @@ let process_ret_site make_visitor id site =
       i, (Some r), s
     | Ret(i, rvalue, s) ->
       if rvalue then
-        let r = match (Functions.res_expression i).enode with
+        let r = match (Functions.get_return_expression_of i).enode with
           | Lval(lv) -> lv
           | _ -> assert false
         in
@@ -401,9 +401,9 @@ let process_ret_site make_visitor id site =
       else
         i, None, s
   in
-  let post = Functions.postcondition fid in
+  let post = Functions.get_postcondition_of fid in
   let adapt p th =
-    let name = ((Functions.name fid) ^ " ensures") :: p.pred_name in
+    let name = ((Functions.get_name_of fid) ^ " ensures") :: p.pred_name in
     let visitor = make_visitor th res in
     { (Visitor.visitFramacPredicate visitor p) with pred_name = name }
   in

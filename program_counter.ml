@@ -25,9 +25,8 @@ let logic_info = ref None
 let build () =
   let pc = Cil_const.make_logic_var_formal "pc" Linteger in
   let gen_equality n = prel (Req, tvar pc, tinteger n) in
-  let sids =
-    (List.map (fun i -> -i) (Functions.ids())) @ Statements.simulations()
-  in
+  let functions_sids = List.map (fun i -> -i) (Functions.get_all_ids()) in
+  let sids = functions_sids @ Statements.simulations() in
   let pred = pors ((gen_equality 0) :: List.map gen_equality sids) in
   let result = {
     (Cil_const.make_logic_info "valid_pc") with
@@ -61,7 +60,8 @@ let build_invariant_li () =
     let t = term (TLval (Vars.l_access id ~th:(Some th) loc)) Linteger in
     app t lbl
   in
-  let all_return_pc = List.map return_pc_value ((-1) :: Functions.ids()) in
+  let functions_ids = Functions.get_all_ids() in
+  let all_return_pc = List.map return_pc_value ((-1) :: functions_ids) in
   let pred = pands all_return_pc in
   let result = {
     (Cil_const.make_logic_info "valid_pcs") with

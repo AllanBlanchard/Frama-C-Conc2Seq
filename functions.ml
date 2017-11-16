@@ -54,29 +54,29 @@ let build_init func =
   Globals.Functions.replace_by_declaration spec decl (Cil.CurrentLoc.get());
   decl
 
-let add kf =
+let add_kf kf =
   let id = in_old find_id kf in
   functions := Fmap.add id kf !functions ;
   let kf = force_get_old_kf id in
   let vi = in_old find_var kf in
   stack_init := Fmap.add id (build_init vi) !stack_init
 
-let first_stmt id =
+let get_first_stmt_of id =
   in_old Kernel_function.find_first_stmt (force_get_old_kf id)
 
-let return_stmt id =
+let get_return_stmt_of id =
   in_old Kernel_function.find_return (force_get_old_kf id)
 
-let res_expression id =
-  let stmt = return_stmt id in
+let get_return_expression_of id =
+  let stmt = get_return_stmt_of id in
   match stmt.skind with
   | Return(Some(e), _) -> e
   | _                  -> assert false
 
-let name id =
+let get_name_of id =
   in_old Kernel_function.get_name (force_get_old_kf id)
 
-let formals id =
+let get_formals_of id =
   in_old Kernel_function.get_formals (force_get_old_kf id)
 
 let init_simulations loc =
@@ -84,34 +84,34 @@ let init_simulations loc =
     (fun (_, vi) -> GFunDecl(Cil.empty_funspec (), vi, loc))
     (Fmap.bindings !stack_init)
 
-let ids () =
+let get_all_ids () =
   Fmap.fold (fun k _ l -> k :: l) !stack_init []
 
-let simulation id =
+let get_simulation_of id =
   if Fmap.mem id !stack_init then
     Fmap.find id !stack_init
   else
     assert false
 
-let add_requires id p =
+let add_requires_to id p =
   let id_p = Logic_const.new_predicate p in
   Annotations.add_requires Options.emitter (force_get_kf id) [id_p]
   
-let add_requires_thread id p_from_th =
+let add_requires_thread_dep_to id p_from_th =
   let lth = Cil.cvar_to_lvar(th_parameter (force_get_kf id)) in
   let th = Logic_const.tlogic_coerce (Logic_const.tvar lth) Linteger in
-  add_requires id (p_from_th th)
+  add_requires_to id (p_from_th th)
 
-let add_ensures id p =
+let add_ensures_to id p =
   let id_p = Logic_const.new_predicate p in
   Annotations.add_ensures Options.emitter (force_get_kf id) [Normal, id_p]
     
-let add_ensures_thread id p_from_th =
+let add_ensures_thread_dep_to id p_from_th =
   let lth = Cil.cvar_to_lvar(th_parameter (force_get_kf id)) in
   let th = Logic_const.tlogic_coerce (Logic_const.tvar lth) Linteger in
-  add_ensures id (p_from_th th)
+  add_ensures_to id (p_from_th th)
 
-let precondition id =
+let get_precondition_of id =
   let kf = force_get_old_kf id in
   let folder _ ip l = (Logic_const.pred_of_id_pred ip) :: l in
   let fold_requires () =
@@ -119,7 +119,7 @@ let precondition id =
   in
   Query.sload fold_requires ()
 
-let postcondition id =
+let get_postcondition_of id =
   let kf = force_get_old_kf id in
   let folder _ (_, ip) l = (Logic_const.pred_of_id_pred ip) :: l in
   let fold_ensures () =
@@ -127,15 +127,15 @@ let postcondition id =
   in
   Query.sload fold_ensures ()
 
-(* refacto *)
-let add_pc_steps id =
+(* Needs refactoring *)
+let add_program_counter_prepost_to id =
   let open Logic_const in
   let lth = Cil.cvar_to_lvar(th_parameter (force_get_kf id)) in
   let th = Logic_const.tlogic_coerce (Logic_const.tvar lth) Linteger in
   let loc = Cil_datatype.Location.unknown in
   let pct = Vars.l_access (-1) ~th:(Some th) loc in
   let before  = prel (Req, (term (TLval pct) Linteger), tinteger (-id)) in
-  let stmt_id = (first_stmt id).sid in
+  let stmt_id = (get_first_stmt_of id).sid in
   let after   = prel (Req, (term (TLval pct) Linteger), tinteger stmt_id) in
-  add_requires id before ;
-  add_ensures  id after
+  add_requires_to id before ;
+  add_ensures_to  id after

@@ -175,7 +175,7 @@ class visitor = object(_)
     List.iter (fun (v, ii) -> Vars.add_thread_local v ii) th_locals ;
     List.iter (fun (f, v ) -> Vars.add_local f v) locals ;
     List.iter (fun  f      -> Vars.add_function f) functions ;
-    List.iter (fun  f      -> Functions.add f) functions ;
+    List.iter (fun  f      -> Functions.add_kf f) functions ;
     List.iter (fun (kf, s) -> Statements.add_stmt kf s) statements ;
 
     (* Process existing specs *)
