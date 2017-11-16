@@ -81,7 +81,7 @@ let switch_stmt choose th loc =
 
 let random_thread_stmt th loc =
   let lv_th = Some( (Var th), NoOffset ) in
-  let fun_vi = Kernel_function.get_vi (Atomic_header.some_thread ()) in
+  let fun_vi = Kernel_function.get_vi (Atomic_header.some_thread_kf ()) in
   Cil.mkStmt (Instr (Call(lv_th, (Cil.evar fun_vi), [], loc)))
 
 let build_code loc = 

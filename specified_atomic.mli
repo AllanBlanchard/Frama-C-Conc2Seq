@@ -17,7 +17,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-val atomic_stmt : Cil_types.stmt -> bool
-val atomic_fct : Kernel_function.t -> bool
-val atomic_call : Cil_types.instr -> bool
-val atomic_call_stmt : Cil_types.stmt -> bool
+val stmt : Cil_types.stmt -> bool
+val kf : Kernel_function.t -> bool
+val call_instr : Cil_types.instr -> bool
+val call_stmt : Cil_types.stmt -> bool

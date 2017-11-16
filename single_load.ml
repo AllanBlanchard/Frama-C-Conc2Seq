@@ -55,9 +55,8 @@ class visitor bhv_ref prj = object(me)
       (fun f -> Cfg.clearCFGinfo ~clear_id:false f ; Cfg.cfgFun f ; f)
 
   method! vstmt_aux s =
-    let open Atomic_spec in
     match s.skind with
-    | Block(_) when Query.original atomic_stmt s ->
+    | Block(_) when Query.original Specified_atomic.stmt s ->
       Cil.JustCopy
     | UnspecifiedSequence(_) ->
       raise (Errors.BadConstruct "Unspecified sequences")
@@ -65,14 +64,13 @@ class visitor bhv_ref prj = object(me)
       Cil.DoChildren
 
   method! vinst inst =
-    let open Atomic_spec in
     let replace lv =
       match lv with
       | Var(vi), o -> Var(me#pr_nvi vi), me#pr_voff o
       | Mem(e), o  -> Mem(me#pr_vexp e), me#pr_voff o
     in
     let add_dummy i =
-      if not (Query.original atomic_call inst)
+      if not (Query.original Specified_atomic.call_instr inst)
       then [ i ; Cil.dummyInstr ] else [i]
     in
     let update_fnode efct loc =

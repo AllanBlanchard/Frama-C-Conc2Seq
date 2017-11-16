@@ -40,7 +40,7 @@ class expr_visitor prj th loc = object(me)
     | Instr(Local_init(vi,AssignInit(SingleInit(e)),loc)) ->
       let s = Cil.mkStmt(Instr(Set( (Var(vi), NoOffset), e, loc))) in
       Cil.ChangeDoChildrenPost (s, fun s -> s)
-    | Instr(Call(res, fct, l ,loc)) when Atomic_spec.atomic_call_stmt s ->
+    | Instr(Call(res, fct, l ,loc)) when Specified_atomic.call_stmt s ->
       let res = match res with
         | None   -> None
         | Some lv -> Some (me#pr_vlval lv)
@@ -59,7 +59,7 @@ class expr_visitor prj th loc = object(me)
       Cil.ChangeTo(Cil.mkStmt(Instr(Call(res, fct, l, loc))))
     | Instr(Call(_, _, _ ,_)) ->
       raise (BadConstruct "Non atomic calls from atomic block")
-    | Block(_) when Atomic_spec.atomic_stmt s ->
+    | Block(_) when Specified_atomic.stmt s ->
       raise (BadConstruct "Nested Atomic blocks")
     | _ -> Cil.DoChildren
 

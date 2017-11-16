@@ -58,7 +58,7 @@ let affect_from fct th value loc =
 let rec skip_skip stmt =
   match stmt.skind with
   | Continue(_) | Break(_) | Instr(Skip(_)) | Instr(Asm(_))
-  | Block(_) when not (Atomic_spec.atomic_stmt stmt)
+  | Block(_) when not (Specified_atomic.stmt stmt)
     -> skip_skip (List.hd stmt.succs)
   | Goto(r_next, _) -> skip_skip !r_next
   | _ -> stmt
@@ -214,7 +214,7 @@ let at_block transformer affect s =
   Options.debug "Atomic block: (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
-  assert (Atomic_spec.atomic_stmt s) ;
+  assert (Specified_atomic.stmt s) ;
   match s.skind with
   | Block(b) ->
     let fs = skip_skip (after_block s) in
@@ -270,12 +270,12 @@ let add_stmt kf stmt =
     | Instr(Set(_)) | Instr(Local_init(_,AssignInit(_),_)) ->
       set transformer affect stmt
     | Instr(Call(Some(_),_,_,_)) | Instr(Local_init(_,ConsInit(_),_))
-      when not(Query.sload Atomic_spec.atomic_call_stmt stmt) ->
+      when not(Query.sload Specified_atomic.stmt stmt) ->
       let dum, result, next = call_ret transformer affect stmt th stmt.sid in
       return_loading kf stmt dum ;
       result, next
     | Instr(Call(None,_,_,_))
-      when not(Query.sload Atomic_spec.atomic_call_stmt stmt) ->
+      when not(Query.sload Specified_atomic.stmt stmt) ->
       call_void transformer affect stmt th stmt.sid
     | Instr(Call(_,_,_,_)) | Instr(Local_init(_,ConsInit(_),_)) ->
       atomic_call transformer affect stmt

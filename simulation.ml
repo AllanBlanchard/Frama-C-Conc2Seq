@@ -27,7 +27,7 @@ class empty_project prj = object(_)
   method! vglob_aux g =
     let atomic_fct vi =
       let kf = Query.sload Globals.Functions.get vi in
-      Query.sload Atomic_spec.atomic_fct kf
+      Query.sload Specified_atomic.kf kf
     in
     let remove _ = [] in
     match g with
@@ -111,7 +111,7 @@ let collect_functions () =
   let collect kf l =
     match kf.fundec with
     | Declaration(_) -> l
-    | Definition(_, _) when Atomic_spec.atomic_fct kf -> l
+    | Definition(_, _) when Specified_atomic.kf kf -> l
     | _ -> kf :: l
   in
   Globals.Functions.fold collect []
@@ -125,9 +125,9 @@ class stmt_collector = object(this)
     let kf = match this#current_kf with None -> assert false | Some kf -> kf in
     match stmt.skind with
     | Goto(_) | Continue(_) | Break(_) | Instr(Skip(_)) 
-    | Instr(Asm(_)) | Block(_) when not (Atomic_spec.atomic_stmt stmt) ->
+    | Instr(Asm(_)) | Block(_) when not (Specified_atomic.stmt stmt) ->
       Cil.DoChildren
-    | Block(_) when Atomic_spec.atomic_stmt stmt ->
+    | Block(_) when Specified_atomic.stmt stmt ->
       stmt_list <- (kf, stmt) :: stmt_list ; Cil.SkipChildren
     | _ ->
       stmt_list <- (kf, stmt) :: stmt_list ; Cil.DoChildren
@@ -142,7 +142,7 @@ let collect_stmts () =
   let collect kf =
     match kf.fundec with
     | Declaration(_) -> ()
-    | Definition(fundec, _) when not (Atomic_spec.atomic_fct kf) ->
+    | Definition(fundec, _) when not (Specified_atomic.kf kf) ->
       let _ = visitFramacFunction (collector :> frama_c_inplace) fundec in ()
     | _ -> ()
   in
@@ -222,9 +222,9 @@ class visitor = object(_)
   method! vglob_aux g =
     let open Globals.Functions in
     begin match g with
-      | GFun(f, _) when Atomic_spec.atomic_fct (get f.svar) ->
+      | GFun(f, _) when Specified_atomic.kf (get f.svar) ->
         in_atomic_func <- true
-      | GFunDecl(_, vi, _) when Atomic_spec.atomic_fct (get vi) ->
+      | GFunDecl(_, vi, _) when Specified_atomic.kf (get vi) ->
         in_atomic_func <- true
       | _ -> ()
     end ;

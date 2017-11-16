@@ -15,7 +15,7 @@ PLUGIN_CMO := \
 	errors\
 	options\
 	query\
-	atomic_spec\
+	specified_atomic\
 	atomic_header\
 	thread_local\
 	single_load\

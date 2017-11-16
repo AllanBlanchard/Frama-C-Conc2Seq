@@ -18,7 +18,6 @@
 (**************************************************************************)
 
 open Cil_types
-(*open Logic_const*)
 open Logic_typing
 
 let atomic_count = ref 0 
@@ -47,7 +46,7 @@ let contains_atomic spec =
   List.exists is_atomic_behavior spec.spec_behavior
 
 (* Check if the given statement is tagged atomic *)
-let atomic_stmt s =
+let stmt s =
   let annots = Annotations.code_annot s in
   let atomic annot = match annot.annot_content with
     | AStmtSpec(_, spec) -> contains_atomic spec
@@ -55,10 +54,10 @@ let atomic_stmt s =
   in
   List.exists atomic annots
 
-let atomic_fct kf =
-  contains_atomic (Annotations.funspec kf)
+let kf func =
+  contains_atomic (Annotations.funspec func)
 
-let atomic_call instr =
+let call_instr instr =
   let fct = match instr with
     | Call(_, e, _, _) ->
       begin match e.enode with
@@ -68,11 +67,11 @@ let atomic_call instr =
     | Local_init(_, ConsInit(fct, _, _), _) -> fct
     | _ -> assert false
   in
-  atomic_fct (Globals.Functions.get fct)
+  kf (Globals.Functions.get fct)
 
-let atomic_call_stmt s =
+let call_stmt s =
   match s.skind with
-  | Instr(i) -> atomic_call i
+  | Instr(i) -> call_instr i
   | _ -> assert false
 
 
