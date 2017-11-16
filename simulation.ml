@@ -176,7 +176,7 @@ class visitor = object(_)
     List.iter (fun (f, v ) -> Vars.add_local f v) locals ;
     List.iter (fun  f      -> Vars.add_function f) functions ;
     List.iter (fun  f      -> Functions.add_kf f) functions ;
-    List.iter (fun (kf, s) -> Statements.add_stmt kf s) statements ;
+    List.iter (fun (kf, s) -> Statements.add_kf_stmt kf s) statements ;
 
     (* Process existing specs *)
     List.iter (fun li -> Fun_preds.register li) user_lfuncs ;
@@ -193,8 +193,8 @@ class visitor = object(_)
     let modify f =
       let loc = Cil.CurrentLoc.get() in
       let vglobals = Vars.simulations loc in
-      let fglobals = Statements.globals loc in
-      let iglobals = Functions.init_simulations loc in
+      let fglobals = Statements.get_located_simulation_globals loc in
+      let iglobals = Functions.get_located_simulation_globals loc in
       let ilv = Interleavings.get_function loc in
       let choose = Interleavings.get_choose loc in
       let pcpreds = Program_counter.globals loc in

@@ -258,7 +258,7 @@ let return_loading kf stmt dum =
   ret_callee := Smap.add dum.sid (LoadRet(fct.vid, old_ret, ret_stmt)) !ret_callee ;
   ()
 
-let add_stmt kf stmt =
+let add_kf_stmt kf stmt =
   (* The call to get_vi is NOT SAFE but the way it is implemented (Silicon) *)
   (* does not depend on the global state, so it is OK there.                *)
   let name = (Globals.Functions.get_vi kf).vname^"_"^(string_of_int stmt.sid) in
@@ -304,17 +304,16 @@ let add_stmt kf stmt =
   finalize def block loc ;
   statements := Smap.add stmt.sid (def, next) !statements
 
-let simulation sid =
+let get_simulation_of sid =
   match Smap.mem sid !statements with
   | true -> fst (Smap.find sid !statements)
   | false -> assert false
 
-let simulations () =
+let get_all_ids () =
   Smap.fold (fun k _ l -> k :: l) !statements []
 
-let globals loc =
+let get_located_simulation_globals loc =
   List.map (fun (_, (f, _)) -> GFun(f, loc)) (Smap.bindings !statements)
-
 
 let force_get_kf id =
   if Smap.mem id !statements then
@@ -331,25 +330,25 @@ let force_get_nexts id =
 let th_parameter kf =
   match Kernel_function.get_formals kf with [th] -> th | _ -> assert false
 
-let add_requires id p =
+let add_requires_to id p =
   let id_p = Logic_const.new_predicate p in
   Annotations.add_requires Options.emitter (force_get_kf id) [id_p]
   
-let add_requires_thread id p_from_th =
+let add_requires_thread_dep_to id p_from_th =
   let lth = Cil.cvar_to_lvar(th_parameter (force_get_kf id)) in
   let th = Logic_const.tlogic_coerce (Logic_const.tvar lth) Linteger in
-  add_requires id (p_from_th th)
+  add_requires_to id (p_from_th th)
 
-let add_ensures id p =
+let add_ensures_to id p =
   let id_p = Logic_const.new_predicate p in
   Annotations.add_ensures Options.emitter (force_get_kf id) [Normal, id_p]
     
-let add_ensures_thread id p_from_th =
+let add_ensures_thread_dep_to id p_from_th =
   let lth = Cil.cvar_to_lvar(th_parameter (force_get_kf id)) in
   let th = Logic_const.tlogic_coerce (Logic_const.tvar lth) Linteger in
-  add_ensures id (p_from_th th)
+  add_ensures_to id (p_from_th th)
 
-let add_pc_steps id =
+let add_program_counter_prepost_to id =
   let open Logic_const in
   let stmt = (force_get_kf id) in
   let lth = Cil.cvar_to_lvar(th_parameter stmt) in
@@ -357,7 +356,7 @@ let add_pc_steps id =
   let loc = Cil_datatype.Location.unknown in
   let pct = Vars.l_access (-1) ~th:(Some th) loc in
   let before  = prel (Req, (term (TLval pct) Linteger), tinteger id) in
-  add_requires id before ;
+  add_requires_to id before ;
   match force_get_nexts id with
   | [] -> ()
   | l  ->
@@ -365,7 +364,7 @@ let add_pc_steps id =
       prel (Req, (term (TLval pct) Linteger), tinteger n)
     in
     let after = pors (List.map gen_equality l) in
-    add_ensures id after
+    add_ensures_to id after
 
 let make_assert id stmt p_from_th =
   let kf = (force_get_kf id) in
@@ -412,6 +411,6 @@ let process_ret_site make_visitor id site =
 let process_ret_sites make_visitor =
   Smap.iter (process_ret_site make_visitor) !ret_callee
 
-let process_callret_specs make_visitor =
+let process_callreturn_sites_spec make_visitor =
   process_call_sites make_visitor ;
   process_ret_sites make_visitor

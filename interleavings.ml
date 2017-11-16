@@ -44,7 +44,7 @@ let case_choose vi th loc =
   case_identified 0 vi th loc
 
 let case_stmt sid th loc =
-  case_identified sid (Statements.simulation sid).svar th loc
+  case_identified sid (Statements.get_simulation_of sid).svar th loc
 
 let case_init sid th loc =
   case_identified (-sid) (Functions.get_simulation_of sid) th loc
@@ -65,7 +65,7 @@ let all_case_stmt th loc =
       fun (ls, lb) id ->
         let (s, b) = case_stmt id th loc in
         (s :: ls) , (b :: lb)
-    ) ([],[]) ( Statements.simulations() ) 
+    ) ([],[]) ( Statements.get_all_ids() ) 
   in
   starts, List.flatten blocks
 

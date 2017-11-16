@@ -25,7 +25,7 @@ val get_return_stmt_of : int -> stmt
 val get_return_expression_of : int -> exp
 val get_formals_of : int -> varinfo list
 val get_name_of : int -> string
-val init_simulations : location -> global list
+val get_located_simulation_globals : location -> global list
 val get_all_ids : unit -> int list
 val get_simulation_of : int -> varinfo
 

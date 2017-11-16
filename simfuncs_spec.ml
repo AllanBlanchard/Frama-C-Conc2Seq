@@ -29,8 +29,8 @@ let func_add_lbl_invariant id p =
   func_add_invariant id (p here)
 
 let stmt_add_invariant id p =
-  Statements.add_requires id p ;
-  Statements.add_ensures id p 
+  Statements.add_requires_to id p ;
+  Statements.add_ensures_to id p 
 
 let stmt_add_lbl_invariant id p =
   stmt_add_invariant id (p here)
@@ -41,19 +41,27 @@ let add_th_parameter_validity () =
     Functions.add_requires_thread_dep_to id valid_thread_id
   in
   let add_to_stmt id =
-    Statements.add_requires_thread id valid_thread_id
+    Statements.add_requires_thread_dep_to id valid_thread_id
   in
   List.iter add_to_func (Functions.get_all_ids()) ;
-  List.iter add_to_stmt (Statements.simulations())
+  List.iter add_to_stmt (Statements.get_all_ids())
 
 let add_invariant_in_simulations i =
-  List.iter (fun id -> func_add_lbl_invariant id i) (Functions.get_all_ids()) ;
-  List.iter (fun id -> stmt_add_lbl_invariant id i) (Statements.simulations());
+  List.iter
+    (fun id -> func_add_lbl_invariant id i)
+    (Functions.get_all_ids()) ;
+  List.iter
+    (fun id -> stmt_add_lbl_invariant id i)
+    (Statements.get_all_ids());
   Interleavings.add_invariant (i here)
 
 let add_program_counter_steps () =
-  List.iter Functions.add_program_counter_prepost_to (Functions.get_all_ids()) ;
-  List.iter Statements.add_pc_steps (Statements.simulations())
+  List.iter
+    Functions.add_program_counter_prepost_to
+    (Functions.get_all_ids()) ;
+  List.iter
+    Statements.add_program_counter_prepost_to
+    (Statements.get_all_ids())
 
 let add_simulation_invariant () =
   let loc = Cil_datatype.Location.unknown in
@@ -65,7 +73,7 @@ let add_user_invariant () =
   let add_invariant p =
     let p = { p with pred_name = "User invariant" :: p.pred_name } in
     List.iter (fun id -> func_add_invariant id p) (Functions.get_all_ids()) ;
-    List.iter (fun id -> stmt_add_invariant id p) (Statements.simulations()) ;
+    List.iter (fun id -> stmt_add_invariant id p) (Statements.get_all_ids()) ;
     Interleavings.add_invariant p
   in
   List.iter add_invariant (User_invariant.predicates ())
@@ -83,4 +91,4 @@ let add_prepost () =
   let loc = Cil_datatype.Location.unknown in
   let make_visitor th res = Fun_preds.make_visitor th ~res loc in
   List.iter (add_pre_for make_visitor) (Functions.get_all_ids()) ;
-  Statements.process_callret_specs make_visitor
+  Statements.process_callreturn_sites_spec make_visitor

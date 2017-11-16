@@ -79,7 +79,7 @@ let get_name_of id =
 let get_formals_of id =
   in_old Kernel_function.get_formals (force_get_old_kf id)
 
-let init_simulations loc =
+let get_located_simulation_globals loc =
   List.map
     (fun (_, vi) -> GFunDecl(Cil.empty_funspec (), vi, loc))
     (Fmap.bindings !stack_init)

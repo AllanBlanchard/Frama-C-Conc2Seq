@@ -26,7 +26,8 @@ let build () =
   let pc = Cil_const.make_logic_var_formal "pc" Linteger in
   let gen_equality n = prel (Req, tvar pc, tinteger n) in
   let functions_sids = List.map (fun i -> -i) (Functions.get_all_ids()) in
-  let sids = functions_sids @ Statements.simulations() in
+  let statement_sids = Statements.get_all_ids() in
+  let sids = functions_sids @ statement_sids in
   let pred = pors ((gen_equality 0) :: List.map gen_equality sids) in
   let result = {
     (Cil_const.make_logic_info "valid_pc") with

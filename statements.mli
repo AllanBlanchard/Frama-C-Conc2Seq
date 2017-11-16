@@ -19,15 +19,15 @@
 
 open Cil_types
 
-val add_stmt : kernel_function -> stmt -> unit
-val globals: location -> global list
-val simulation: int -> fundec
-val simulations: unit -> int list
+val add_kf_stmt : kernel_function -> stmt -> unit
+val get_located_simulation_globals: location -> global list
+val get_simulation_of: int -> fundec
+val get_all_ids: unit -> int list
 
-val add_pc_steps: int -> unit
-val process_callret_specs: (term -> term_lval option -> Visitor.frama_c_copy) -> unit
+val add_program_counter_prepost_to: int -> unit
+val process_callreturn_sites_spec: (term -> term_lval option -> Visitor.frama_c_copy) -> unit
 
-val add_requires : int -> predicate -> unit
-val add_requires_thread : int-> (term -> predicate) -> unit
-val add_ensures : int -> predicate -> unit
-val add_ensures_thread : int -> (term -> predicate) -> unit
+val add_requires_to : int -> predicate -> unit
+val add_requires_thread_dep_to : int-> (term -> predicate) -> unit
+val add_ensures_to : int -> predicate -> unit
+val add_ensures_thread_dep_to : int -> (term -> predicate) -> unit
