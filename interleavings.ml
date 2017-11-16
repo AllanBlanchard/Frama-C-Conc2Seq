@@ -75,7 +75,7 @@ let switch_stmt choose th loc =
   let sstmts , s_calls = all_case_stmt th loc in
   let switch_b      = Cil.mkBlock (ch_call @ f_calls @ s_calls) in
   let switch_starts = schoose :: sfuncs @ sstmts in
-  let access = Vars.c_access (-1) ~th:(Some (Cil.evar th)) loc in
+  let access = Vars.get_c_access_to (-1) ~th:(Some (Cil.evar th)) loc in
   let pct_th = Cil.new_exp ~loc:loc (Lval (access)) in
   Cil.mkStmt( Switch(pct_th, switch_b, switch_starts, loc))
 

@@ -53,7 +53,7 @@ class expr_visitor prj th loc = object(me)
       let l = List.map (me#pr_vexp) l in
       Cil.ChangeTo(Cil.mkStmt(Instr(Call(res, fct, l, loc))))
     | Instr(Local_init(vi, ConsInit(fct, l, _), loc)) ->
-      let res = Some (Vars.c_access vi.vid ~th:(Some th) ~no:NoOffset loc) in
+      let res = Some (Vars.get_c_access_to vi.vid ~th:(Some th) ~no:NoOffset loc) in
       let fct = Cil.new_exp ~loc (Lval( (Var (get_new_function fct)), NoOffset)) in
       let l = List.map (me#pr_vexp) l in
       Cil.ChangeTo(Cil.mkStmt(Instr(Call(res, fct, l, loc))))
@@ -72,11 +72,11 @@ class expr_visitor prj th loc = object(me)
     let modify (host, offset) =
       match host with
       | Var(vi) when Thread_local.variable vi ->
-        Vars.c_access vi.vid ~th:(Some th) ~no:offset loc
+        Vars.get_c_access_to vi.vid ~th:(Some th) ~no:offset loc
       | Var(vi) when vi.vglob ->
-        Vars.c_access vi.vid ~th:(None   ) ~no:offset loc
+        Vars.get_c_access_to vi.vid ~th:(None   ) ~no:offset loc
       | Var(vi) ->
-        Vars.c_access vi.vid ~th:(Some th) ~no:offset loc
+        Vars.get_c_access_to vi.vid ~th:(Some th) ~no:offset loc
       | _       ->
         host, offset
     in

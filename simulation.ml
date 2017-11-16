@@ -169,10 +169,10 @@ class visitor = object(_)
     (*let user_axioms = Query.sload collect_axioms () in*)
 
     (* Code generation *)
-    Vars.initialize_pc () ;
+    Vars.initialize_program_counter () ;
     List.iter (fun (v, ii) -> Vars.add_global v ii) globals ;
     List.iter (fun (v, ii) -> Vars.add_thread_local v ii) th_locals ;
-    List.iter (fun (f, v ) -> Vars.add_local f v) locals ;
+    List.iter (fun (f, v ) -> Vars.add_kf_local f v) locals ;
     List.iter (fun  f      -> Vars.add_function f) functions ;
     List.iter (fun  f      -> Functions.add_kf f) functions ;
     List.iter (fun (kf, s) -> Statements.add_kf_stmt kf s) statements ;
@@ -191,7 +191,7 @@ class visitor = object(_)
       
     let modify f =
       let loc = Cil.CurrentLoc.get() in
-      let vglobals = Vars.simulations loc in
+      let vglobals = Vars.get_located_simulation_globals loc in
       let fglobals = Statements.get_located_simulation_globals loc in
       let iglobals = Functions.get_located_simulation_globals loc in
       let ilv = Interleavings.get_function loc in
@@ -236,7 +236,7 @@ class visitor = object(_)
     let modify (host, offset) =
       match host with
       | Var(vi) when vi.vglob ->
-        Vars.c_access vi.vid ~th:None ~no:offset loc
+        Vars.get_c_access_to vi.vid ~th:None ~no:offset loc
       | _ ->
         host, offset
     in
@@ -252,7 +252,7 @@ class visitor = object(_)
           | Some vi when in_atomic_func && not vi.vglob ->
             host, offset
           | Some vi ->
-            Vars.l_access vi.vid ~th:None ~no:offset loc
+            Vars.get_logic_access_to vi.vid ~th:None ~no:offset loc
         end
       | _ -> host, offset
     in

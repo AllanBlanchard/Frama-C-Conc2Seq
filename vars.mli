@@ -19,18 +19,18 @@
 
 open Cil_types
 
-val initialize_pc : unit -> unit
+val initialize_program_counter : unit -> unit
 val add_global : varinfo -> initinfo -> unit
 val add_thread_local : varinfo -> initinfo -> unit
-val add_local : kernel_function -> varinfo -> unit
+val add_kf_local : kernel_function -> varinfo -> unit
 val add_function : kernel_function -> unit
 
-val c_access: int -> ?th:exp  option -> ?no:offset -> location -> lval
-val l_memloc: int -> term -> location -> term
-val l_access: int -> ?th:term option -> ?no:term_offset -> location -> term_lval
-val l_ptrvalue: int -> location -> term
-val sname: int -> string
+val get_c_access_to: int -> ?th:exp option -> ?no:offset -> location -> lval
+val get_logic_access_to: int -> ?th:term option -> ?no:term_offset -> location -> term_lval
+val get_logic_location_of: int -> location -> term
+val get_logic_location_offset_of: int -> term -> location -> term
+val get_simulation_name_of: int -> string
 
-val simulations : location -> global list
-val ids : unit -> int list
-val global_vis : unit -> varinfo list
+val get_located_simulation_globals : location -> global list
+val get_all_ids : unit -> int list
+val get_original_global_varinfos : unit -> varinfo list

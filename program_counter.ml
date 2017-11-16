@@ -58,7 +58,7 @@ let build_invariant_li () =
   let th  = tvar lth in
   let lbl = FormalLabel("L") in
   let return_pc_value id =
-    let t = term (TLval (Vars.l_access id ~th:(Some th) loc)) Linteger in
+    let t = term (TLval (Vars.get_logic_access_to id ~th:(Some th) loc)) Linteger in
     app t lbl
   in
   let functions_ids = Functions.get_all_ids() in

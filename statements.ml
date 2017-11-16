@@ -42,17 +42,17 @@ let finalize def body loc =
   Cfg.cfgFun def
 
 let affect_pc_th th exp loc = 
-  let access = Vars.c_access (-1) ~th:(Some (Cil.evar th)) loc in
+  let access = Vars.get_c_access_to (-1) ~th:(Some (Cil.evar th)) loc in
   Cil.mkStmt(Instr(Set(access, (Cil.new_exp loc exp), loc)))
 
 let affect_pc_th_int th value loc =
   let const  = Const(CInt64(Integer.of_int value, IInt, None)) in
-  let access = Vars.c_access (-1) ~th:(Some (Cil.evar th)) loc in
+  let access = Vars.get_c_access_to (-1) ~th:(Some (Cil.evar th)) loc in
   Cil.mkStmt(Instr(Set(access, (Cil.new_exp loc const), loc)))
 
 let affect_from fct th value loc =
   let const  = Const(CInt64(Integer.of_int value, IInt, None)) in
-  let access = Vars.c_access fct.vid ~th:(Some (Cil.evar th)) loc in
+  let access = Vars.get_c_access_to fct.vid ~th:(Some (Cil.evar th)) loc in
   Cil.mkStmt(Instr(Set(access, (Cil.new_exp loc const), loc)))
 
 let rec skip_skip stmt =
@@ -91,7 +91,7 @@ let ret_callee = ref Smap.empty
 let call transformer affect fct le next th loc sid =
   let load v e =
     let ne = Visitor.visitFramacExpr transformer e in
-    let nv = Vars.c_access v.vid ~th:(Some (Cil.evar th)) loc in
+    let nv = Vars.get_c_access_to v.vid ~th:(Some (Cil.evar th)) loc in
     Cil.mkStmt(Instr(Set(nv, ne, loc)))
   in
   let loads = List.map2 load (Functions.get_formals_of fct.vid) le in
@@ -159,7 +159,7 @@ let return kf stmt th =
   (* does not depend on the global state, so it is OK there.                *) 
   let fv = Globals.Functions.get_vi kf in
   let loc  = Cil_datatype.Stmt.loc stmt in
-  let from = Lval(Vars.c_access fv.vid ~th:(Some (Cil.evar th)) loc) in
+  let from = Lval(Vars.get_c_access_to fv.vid ~th:(Some (Cil.evar th)) loc) in
   let affect = affect_pc_th th from loc in
   let ret_value = match fv.vtype with
     | TFun(TVoid(_), _, _, _) -> false
@@ -354,7 +354,7 @@ let add_program_counter_prepost_to id =
   let lth = Cil.cvar_to_lvar(th_parameter stmt) in
   let th = Logic_const.tlogic_coerce (Logic_const.tvar lth) Linteger in
   let loc = Cil_datatype.Location.unknown in
-  let pct = Vars.l_access (-1) ~th:(Some th) loc in
+  let pct = Vars.get_logic_access_to (-1) ~th:(Some th) loc in
   let before  = prel (Req, (term (TLval pct) Linteger), tinteger id) in
   add_requires_to id before ;
   match force_get_nexts id with

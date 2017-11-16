@@ -68,11 +68,11 @@ class term_visitor prj th result loc = object(me)
         begin match lv.lv_origin with
           | None -> host, offset
           | Some vi when Thread_local.variable vi ->
-            Vars.l_access vi.vid ~th:(Some th) ~no:offset loc
+            Vars.get_logic_access_to vi.vid ~th:(Some th) ~no:offset loc
           | Some vi when vi.vglob ->
-            Vars.l_access vi.vid ~th:None ~no:offset loc
+            Vars.get_logic_access_to vi.vid ~th:None ~no:offset loc
           | Some vi ->
-            Vars.l_access vi.vid ~th:(Some th) ~no:offset loc
+            Vars.get_logic_access_to vi.vid ~th:(Some th) ~no:offset loc
         end
       | _ -> host, offset
     in

@@ -22,13 +22,14 @@ open Logic_const
 
 
 let make_axiom loc id =
-  let vname = Vars.sname id in
+  let vname = Vars.get_simulation_name_of id in
   Options.feedback "Building validity axiom for %s" vname ;
   let j   = Cil_const.make_logic_var_quant "j" Linteger in
   let lj  = tvar j in
   let lbl = FormalLabel("L") in
   let valid_th = Atomic_header.valid_thread_id lj in
-  let mem_loc  = pvalid ~loc (lbl, Vars.l_memloc id lj loc) in
+  let simulation_location = Vars.get_logic_location_offset_of id lj loc in
+  let mem_loc  = pvalid ~loc (lbl, simulation_location) in
   let tmp  = pforall([j], pimplies(valid_th, mem_loc)) in
   let impl = pimplies((Simulation_invariant.app loc lbl), tmp) in
   let name = vname ^ "_is_valid" in
@@ -38,10 +39,10 @@ let make_range loc id =
   let max_th = Atomic_header.max_thread () in
   let up_bound = term (TBinOp (MinusA, max_th, tinteger 1)) Linteger in
   let range = trange ~loc (Some (tinteger 0), Some up_bound) in
-  Vars.l_memloc id range loc
+  Vars.get_logic_location_offset_of id range loc
 
 let make_ranges loc = 
-  List.map (make_range loc) (Vars.ids())
+  List.map (make_range loc) (Vars.get_all_ids())
 
 let gvar_range loc vi =
   let open Logic_const in
@@ -68,7 +69,7 @@ let gvars_ranges loc =
          | TArray(_,None,_,_) | TPtr(_) | TVoid(_) | TFun(_)
          | TBuiltin_va_list(_) -> false
          | _ -> true
-      )(Vars.global_vis())
+      )(Vars.get_original_global_varinfos())
   in
   List.iter(fun vi ->
       match vi.vtype with
@@ -95,12 +96,15 @@ let make_separation loc =
   Dlemma(name, true, [lbl], [], impl, [], loc)
 
 let add_vars_to_simulation_inv loc =
-  let vars = List.map (fun i -> Vars.l_ptrvalue i loc) (Vars.ids ()) in
+  let vars = List.map
+      (fun i -> Vars.get_logic_location_of i loc)
+      (Vars.get_all_ids ())
+  in
   Simulation_invariant.reads vars
     
 let get loc =
   Options.feedback "Building axiomatic block about simulating variables" ;
-  let vars_axioms = List.map (make_axiom loc) (Vars.ids()) in
+  let vars_axioms = List.map (make_axiom loc) (Vars.get_all_ids()) in
   let sepa = make_separation loc in
   add_vars_to_simulation_inv loc ;
   sepa :: vars_axioms

@@ -33,7 +33,7 @@ let locals   = ref Vmap.empty
 let fromvars = ref Vmap.empty
 let pc       = ref None
 
-let initialize_pc () =
+let initialize_program_counter () =
   let rpc = Cil.makeGlobalVar "pc" (TPtr (Cil.intType, [])) in
   Globals.Vars.add_decl rpc ;
   pc := Some rpc
@@ -47,7 +47,7 @@ let add_global var init =
   assert(var.vglob && not (Thread_local.variable var)) ;
   globals := Vmap.add var.vid (var, init) !globals
 
-let add_local func var =
+let add_kf_local func var =
   assert (not var.vglob) ;
   let fname = (Globals.Functions.get_vi func).vname in
   let simulation = create_simulation fname var in
@@ -62,14 +62,14 @@ let add_function func =
 
 let get_pc () = match !pc with None -> assert false | Some v -> v
 
-let ids () = 
+let get_all_ids () = 
   let t = Vmap.fold (fun v _ l -> v :: l) !thlocals [] in
   let l = Vmap.fold (fun v _ l -> v :: l) !locals [] in
   let f = Vmap.fold (fun v _ l -> v :: l) !fromvars [] in
   -1 :: t @ l @ f
 
 
-let global_vis () =
+let get_original_global_varinfos () =
   Vmap.fold (fun _ (v, _) l -> v :: l) !globals []
 
 let simulations_vis () = 
@@ -79,7 +79,7 @@ let simulations_vis () =
   let f = Vmap.fold (fun _ v l      -> v :: l) !fromvars [] in
   p :: t @ l @ f
   
-let simulations loc =
+let get_located_simulation_globals loc =
   List.map (fun v -> GVar(v, {init=None}, loc)) (simulations_vis())
 
 let ptr_of_local vid =
@@ -89,9 +89,9 @@ let ptr_of_local vid =
   else if Vmap.mem vid !fromvars then Vmap.find vid !fromvars
   else (Options.feedback "Accessing %d" vid ; assert false)
 
-let sname vid = (ptr_of_local vid).vname
+let get_simulation_name_of vid = (ptr_of_local vid).vname
 
-let c_access vid ?th:(th=None) ?no:(no=NoOffset) loc =
+let get_c_access_to vid ?th:(th=None) ?no:(no=NoOffset) loc =
   match th with
   | None ->
     assert(Vmap.mem vid !globals) ;
@@ -101,22 +101,21 @@ let c_access vid ?th:(th=None) ?no:(no=NoOffset) loc =
     let exp = Cil.mkBinOp ~loc PlusPI (Cil.evar ptr) th in
     Cil.mkMem ~addr:exp ~off:no
 
-let l_ptrvalue vid loc =
+let get_logic_location_of vid loc =
   let open Logic_const in
   let ptr = ptr_of_local vid in
   tvar ~loc (Cil.cvar_to_lvar ptr)
 
-let l_memloc vid th loc =
+let get_logic_location_offset_of vid th loc =
   let open Logic_const in
-  let tptr = l_ptrvalue vid loc in
+  let tptr = get_logic_location_of vid loc in
   term ~loc (TBinOp(PlusPI, tptr, th)) (tptr.term_type)  
 
-
-let l_access vid ?th:(th=None) ?no:(no=TNoOffset) loc =
+let get_logic_access_to vid ?th:(th=None) ?no:(no=TNoOffset) loc =
   match th with
   | None ->
     assert(Vmap.mem vid !globals) ;
     TVar(Cil.cvar_to_lvar (fst (Vmap.find vid !globals))), no
   | Some th ->
-    let term = l_memloc vid th loc in
+    let term = get_logic_location_offset_of vid th loc in
     Cil.mkTermMem ~addr:term ~off:no
