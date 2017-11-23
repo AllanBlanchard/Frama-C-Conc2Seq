@@ -21,19 +21,20 @@ open Cil_types
 open Logic_const
 
 
-let make_axiom loc id =
-  let vname = Vars.get_simulation_name_of id in
-  Options.feedback "Building validity axiom for %s" vname ;
-  let j   = Cil_const.make_logic_var_quant "j" Linteger in
-  let lj  = tvar j in
+let make_validity_axiom loc var_id =
+  let var_name = Vars.get_simulation_name_of var_id in
+  Options.feedback "Building validity axiom for %s" var_name ;
+  let lj  = Cil_const.make_logic_var_quant "j" Linteger in
+  let tj  = tvar lj in
   let lbl = FormalLabel("L") in
-  let valid_th = Atomic_header.valid_thread_id lj in
-  let simulation_location = Vars.get_logic_location_offset_of id lj loc in
-  let mem_loc  = pvalid ~loc (lbl, simulation_location) in
-  let tmp  = pforall([j], pimplies(valid_th, mem_loc)) in
-  let impl = pimplies((Simulation_invariant.app loc lbl), tmp) in
-  let name = vname ^ "_is_valid" in
-  Dlemma(name, true, [lbl], [], impl, [], loc)
+  let valid_j = Atomic_header.valid_thread_id tj in
+  let location_sim_var_j = Vars.get_logic_location_offset_of var_id tj loc in
+  let mem_loc = pvalid ~loc (lbl, location_sim_var_j) in
+  let all_j_locations_valid = pforall([lj], pimplies(valid_j, mem_loc)) in
+  let simulation = Simulation_invariant.app loc lbl in
+  let implication = pimplies(simulation, all_j_locations_valid) in
+  let lemma_name = var_name ^ "_is_valid" in
+  Dlemma(lemma_name, true, [lbl], [], implication, [], loc)
     
 let make_range loc id =
   let max_th = Atomic_header.max_thread () in
@@ -104,7 +105,7 @@ let add_vars_to_simulation_inv loc =
     
 let get loc =
   Options.feedback "Building axiomatic block about simulating variables" ;
-  let vars_axioms = List.map (make_axiom loc) (Vars.get_all_ids()) in
+  let vars_axioms = List.map (make_validity_axiom loc) (Vars.get_all_ids()) in
   let sepa = make_separation loc in
   add_vars_to_simulation_inv loc ;
   sepa :: vars_axioms

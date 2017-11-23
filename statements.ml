@@ -21,7 +21,20 @@ open Cil_types
 
 module Smap = Map.Make(struct type t = int let compare = compare end)
 
+type return_site = Ret of (int * bool * stmt)
+                 | LoadRet of (int * lval * stmt)
+
 let statements = ref Smap.empty
+let call_callee = ref Smap.empty
+let ret_callee = ref Smap.empty
+
+let get_vi kf = 
+  (* Taking in account the semantic of the calls to Globals.Functions this   *)
+  (* call to get_vi is NOT SAFE but the way it is implemented (Silicon) does *)
+  (* not depend on the global state (as it could be, being part of Globals). *)
+  (* So it is OK there. Making this "safe" would require to reimplement the  *)
+  (* get_vi function defined in Globals.Functions outside.                   *)
+  Globals.Functions.get_vi kf
 
 let base_simulation name =
   Options.feedback "Generating %s function" name ;
@@ -47,8 +60,7 @@ let affect_pc_th th exp loc =
 
 let affect_pc_th_int th value loc =
   let const  = Const(CInt64(Integer.of_int value, IInt, None)) in
-  let access = Vars.get_c_access_to (-1) ~th:(Some (Cil.evar th)) loc in
-  Cil.mkStmt(Instr(Set(access, (Cil.new_exp loc const), loc)))
+  affect_pc_th th const loc
 
 let affect_from fct th value loc =
   let const  = Const(CInt64(Integer.of_int value, IInt, None)) in
@@ -57,11 +69,16 @@ let affect_from fct th value loc =
 
 let rec skip_skip stmt =
   match stmt.skind with
-  | Continue(_) | Break(_) | Instr(Skip(_)) | Instr(Asm(_))
-  | Block(_) when not (Specified_atomic.stmt stmt)
-    -> skip_skip (List.hd stmt.succs)
-  | Goto(r_next, _) -> skip_skip !r_next
-  | _ -> stmt
+  | Continue(_)
+  | Break(_)
+  | Instr(Skip(_))
+  | Instr(Asm(_))
+  | Block(_) when not (Specified_atomic.stmt stmt) ->
+    skip_skip (List.hd stmt.succs)
+  | Goto(r_next, _) ->
+    skip_skip !r_next
+  | _ ->
+    stmt
 
 let set transformer affect s =
   Options.debug "Assignement: (%d) - %a"
@@ -70,7 +87,8 @@ let set transformer affect s =
   let next = (skip_skip (List.hd s.succs)).sid in
   let ret = affect next in
   let s = match s.skind with
-    | Instr(Set(_)) -> s                         
+    | Instr(Set(_)) ->
+      s                         
     | Instr(Local_init(vi,AssignInit(SingleInit(e)),loc)) ->
       Cil.mkStmt(Instr(Set( (Var(vi), NoOffset), e, loc)))
     | Instr(Local_init(_,AssignInit(_),_)) ->
@@ -82,30 +100,29 @@ let set transformer affect s =
   let nstmt = Visitor.visitFramacStmt transformer s in
   [ nstmt ; ret ], [ next ]
 
-type return_site = Ret of (int * bool * stmt)
-                 | LoadRet of (int * lval * stmt)
-
-let call_callee = ref Smap.empty
-let ret_callee = ref Smap.empty
-
 let call transformer affect fct le next th loc sid =
-  let load v e =
+  let transfer_param_expr_to_formal v e =
     let ne = Visitor.visitFramacExpr transformer e in
     let nv = Vars.get_c_access_to v.vid ~th:(Some (Cil.evar th)) loc in
     Cil.mkStmt(Instr(Set(nv, ne, loc)))
   in
-  let loads = List.map2 load (Functions.get_formals_of fct.vid) le in
+  let loads = List.map2
+      transfer_param_expr_to_formal
+      (Functions.get_formals_of fct.vid)
+      le
+  in
+  let set_from_stmt = affect_from fct th next loc in
+  let first_stmt_of_fct = Functions.get_first_stmt_of fct.vid in
+  let set_pc_stmt = affect first_stmt_of_fct.sid in
+  call_callee := Smap.add sid (fct.vid , set_pc_stmt) !call_callee ;
+  loads @ [ set_from_stmt ; set_pc_stmt ]
 
-  let from_stmt = affect_from fct th next loc in
-  let fst_kf  = Functions.get_first_stmt_of fct.vid in
-  let pc_stmt = affect fst_kf.sid in
-  call_callee := Smap.add sid (fct.vid , pc_stmt) !call_callee ;
-  loads @ [from_stmt ; pc_stmt ]
 
 let call_ret transformer affect s th sid =
   Options.debug "Non-atomic function call (with ret): (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
+  
   let dummy = List.hd s.succs in
   let next_call = dummy.sid in
   let fct, l, loc = match s.skind with
@@ -120,10 +137,12 @@ let call_ret transformer affect s th sid =
   in
   dummy, call transformer affect fct l next_call th loc sid, [next_call]
 
+
 let atomic_call transformer affect s =
   Options.debug "Atomic function call: (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
+  
   let s = match s.skind with
     | Instr(Call(_)) -> s
     | Instr(Local_init(vi, ConsInit(fct, l, _), loc)) ->
@@ -136,10 +155,12 @@ let atomic_call transformer affect s =
   let ret = affect next in
   [ stmt ; ret ], [ next ]
 
+
 let call_void transformer affect s th sid =
   Options.debug "Non-atomic function call (void): (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
+  
   let next_call = (skip_skip (List.hd s.succs)).sid in
   let fct, l, loc = match s.skind with
     | Instr(Call(None, e, l ,loc)) ->
@@ -151,13 +172,13 @@ let call_void transformer affect s th sid =
   in
   call transformer affect fct l next_call th loc sid, [ next_call ]
 
+
 let return kf stmt th =
   Options.debug "Return: (%d) - %a"
     stmt.sid
     Cil_datatype.Stmt.pretty stmt ;
-  (* The call to get_vi is NOT SAFE but the way it is implemented (Silicon) *)
-  (* does not depend on the global state, so it is OK there.                *) 
-  let fv = Globals.Functions.get_vi kf in
+  
+  let fv = get_vi kf in
   let loc  = Cil_datatype.Stmt.loc stmt in
   let from = Lval(Vars.get_c_access_to fv.vid ~th:(Some (Cil.evar th)) loc) in
   let affect = affect_pc_th th from loc in
@@ -168,10 +189,12 @@ let return kf stmt th =
   ret_callee := Smap.add stmt.sid (Ret(fv.vid, ret_value, affect)) !ret_callee ;
   [affect], []
 
+
 let cond transformer affect s loc =
   Options.debug "Conditional: (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
+  
   match s.skind with
   | If(e,_,_,_) ->
     let ne = Visitor.visitFramacExpr transformer e in
@@ -185,6 +208,7 @@ let switch transformer affect s loc =
   Options.debug "Switch: (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
+  
   match s.skind with
   | Switch(e,_,_,_) ->
     let ne = Visitor.visitFramacExpr transformer e in
@@ -214,7 +238,9 @@ let at_block transformer affect s =
   Options.debug "Atomic block: (%d) - %a"
     s.sid
     Cil_datatype.Stmt.pretty s ;
+  
   assert (Specified_atomic.stmt s) ;
+  
   match s.skind with
   | Block(b) ->
     let fs = skip_skip (after_block s) in
@@ -229,6 +255,7 @@ let return_loading kf stmt dum =
   Options.debug "Return loading: (%d) - %a"
     stmt.sid
     Cil_datatype.Stmt.pretty stmt ;
+  
   let old_ret, fct, loc = match stmt.skind with
     | Instr(Call(Some(var), e, _, loc)) ->
       begin match e.enode with
@@ -239,9 +266,7 @@ let return_loading kf stmt dum =
       ((Var vi), NoOffset), fct, loc
     | _ -> assert false
   in
-  (* The call to get_vi is NOT SAFE but the way it is implemented (Silicon) *)
-  (* does not depend on the global state, so it is OK there.                *) 
-  let name = (Globals.Functions.get_vi kf).vname^ "_"^(string_of_int dum.sid) in
+  let name = (get_vi kf).vname ^ "_" ^ (string_of_int dum.sid) in
   let (def, th) = base_simulation name in
 
   let ret_exp = Functions.get_return_expression_of fct.vid in
@@ -259,9 +284,7 @@ let return_loading kf stmt dum =
   ()
 
 let add_kf_stmt kf stmt =
-  (* The call to get_vi is NOT SAFE but the way it is implemented (Silicon) *)
-  (* does not depend on the global state, so it is OK there.                *)
-  let name = (Globals.Functions.get_vi kf).vname^"_"^(string_of_int stmt.sid) in
+  let name = (get_vi kf).vname ^ "_" ^ (string_of_int stmt.sid) in
   let loc  = Cil_datatype.Stmt.loc stmt in
   let (def, th) = base_simulation name in
   let affect value = affect_pc_th_int th value loc in
@@ -288,12 +311,10 @@ let add_kf_stmt kf stmt =
     | Block(_)  ->
       at_block transformer affect stmt
     | Loop(_,b,_,_,_) when b.bstmts = [] ->
-      Options.debug "Loop: (%d) - %a" stmt.sid
-        Cil_datatype.Stmt.pretty stmt ;
+      Options.debug "Loop: (%d) - %a" stmt.sid Cil_datatype.Stmt.pretty stmt ;
       [affect stmt.sid], [stmt.sid]
     | Loop(_,b,_,_,_) ->
-      Options.debug "Loop: (%d) - %a" stmt.sid
-        Cil_datatype.Stmt.pretty stmt ;
+      Options.debug "Loop: (%d) - %a" stmt.sid Cil_datatype.Stmt.pretty stmt ;
       let next = (skip_skip (List.hd b.bstmts)).sid in
       [affect next], [next]
     | _ ->
