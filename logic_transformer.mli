@@ -19,7 +19,9 @@
 (*                                                                        *)
 (**************************************************************************)
 
-val build_function : Cil_types.location -> unit
-val get_function : Cil_types.location -> Cil_types.global
-val get_choose : Cil_types.location -> Cil_types.global
-val add_invariant : Cil_types.predicate -> unit
+open Cil_types
+
+val register: logic_info -> unit
+val get_new_located_globals: location -> global list
+
+val visitor: term -> ?res:term_lval option -> location -> Visitor.frama_c_copy
