@@ -39,8 +39,11 @@ let atomic_typer ~typing_context ~loc ps =
 
 (* Definition of atomic extension for ACSL *)
 (* check if the given behavior bhv contains "atomic" mention *)
-let is_atomic_behavior bhv = 
-  let atomic b = match b with ("atomic", Ext_preds _) -> true | _ -> false in
+let is_atomic_behavior bhv =
+  let atomic b = match b with
+    | (_, "atomic", _, Ext_preds _) -> true
+    | _ -> false
+  in
   List.exists atomic bhv.b_extended
 
 (* Check if a specification contains "atomic" mention *)
