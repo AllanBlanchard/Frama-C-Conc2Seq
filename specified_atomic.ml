@@ -41,7 +41,7 @@ let atomic_typer ~typing_context ~loc ps =
 (* check if the given behavior bhv contains "atomic" mention *)
 let is_atomic_behavior bhv =
   let atomic b = match b with
-    | (_, "atomic", _, Ext_preds _) -> true
+    | (_, "atomic", _, _, Ext_preds _) -> true
     | _ -> false
   in
   List.exists atomic bhv.b_extended
@@ -97,5 +97,5 @@ let loop_strong_inv_typer ~typing_context ~loc ps =
     typing_context.error loc "expecting a predicate after keyword strong invariant"
 
 let () =
-  register_behavior_extension "atomic" atomic_typer ;
-  register_behavior_extension "strong_invariant" loop_strong_inv_typer
+  register_behavior_extension "atomic" false atomic_typer ;
+  register_behavior_extension "strong_invariant" true loop_strong_inv_typer
