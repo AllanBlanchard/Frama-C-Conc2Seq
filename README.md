@@ -1,1 +1,1 @@
-# Conc2Seq
+This plugin is not actively developed anymore.
