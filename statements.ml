@@ -410,7 +410,7 @@ let process_call_sites make_visitor =
 let process_ret_site make_visitor id site =
   let fid, res, stmt = match site with
     | LoadRet(i,r,s) ->
-      let r = Logic_utils.lval_to_term_lval ~cast:true r in
+      let r = Logic_utils.lval_to_term_lval r in
       i, (Some r), s
     | Ret(i, rvalue, s) ->
       if rvalue then
@@ -418,7 +418,7 @@ let process_ret_site make_visitor id site =
           | Lval(lv) -> lv
           | _ -> assert false
         in
-        let r = Logic_utils.lval_to_term_lval ~cast:true r in
+        let r = Logic_utils.lval_to_term_lval r in
         i, (Some r), s
       else
         i, None, s

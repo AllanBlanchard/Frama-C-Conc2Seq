@@ -53,9 +53,9 @@ let gvar_range loc vi =
   match vi.vtype with
   | TInt(_) | TFloat(_) | TNamed(_) | TComp(_) | TEnum(_) ->
     let exp = Cil.new_exp ~loc (AddrOf(Var(vi), NoOffset)) in
-    expr_to_term ~cast:false exp
+    expr_to_term ~coerce:false exp
   | TArray(typ, Some(size),_,_) ->
-    let lsize = expr_to_term ~cast:true size in
+    let lsize = expr_to_term ~coerce:true size in
     let max   = term (TBinOp(MinusA, lsize, (tinteger 1))) lsize.term_type in
     let range = trange ~loc ((Some (tinteger 0)), (Some max)) in
     let lv = Cil.cvar_to_lvar vi in

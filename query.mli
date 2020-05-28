@@ -20,7 +20,7 @@
 (**************************************************************************)
 
 val prepare: Project.t -> unit
-val add_sload: Cil.visitor_behavior -> Project.t -> unit
+val add_sload: Visitor_behavior.t -> Project.t -> unit
 val add_simulation: Project.t -> unit
 
 val original  : ('a -> 'b) -> 'a -> 'b

@@ -101,3 +101,6 @@ let rec gannot ga =
   | Dcustom_annot(_) ->
     Options.warning "Custom annotations %s" msg_end ;
     false
+  | Dextended(_) ->
+    Options.warning "Extended annotations %s" msg_end ;
+    false

@@ -44,7 +44,7 @@ class visitor bhv_ref prj = object(me)
   method private pr_vlval lv = Visitor.visitFramacLval (me :> copy) lv
   method private pr_voff  o  = Visitor.visitFramacOffset (me :> copy) o
 
-  method private pr_nvi vi = Cil.memo_varinfo me#behavior vi
+  method private pr_nvi vi = Visitor_behavior.Memo.varinfo me#behavior vi
 
   val mutable insert_ph = false
 
@@ -118,7 +118,7 @@ class visitor bhv_ref prj = object(me)
   method! vlval _ =
     let loc = Cil.CurrentLoc.get() in
     let nf = match me#current_func with
-      | Some(f) -> Cil.memo_fundec me#behavior f
+      | Some(f) -> Visitor_behavior.Memo.fundec me#behavior f
       | None -> assert false
     in
 

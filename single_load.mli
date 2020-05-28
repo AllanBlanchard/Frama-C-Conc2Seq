@@ -19,4 +19,4 @@
 (*                                                                        *)
 (**************************************************************************)
 
-val make : string -> (Project.t * Cil.visitor_behavior)
+val make : string -> (Project.t * Visitor_behavior.t)
